@@ -62,6 +62,7 @@ The app has no server-side secrets or environment files.
 - Weighted and percent choices are normalized locally.
 - The wheel visualization reflects weighted probabilities.
 - The slot reel remains visually equal-choice; weights affect the final selection only.
+- The slot reel animation performs one presentation-only spin to the selected result.
 - Generated images are produced locally from the current result.
 - No third-party scripts, fonts, analytics, or network services are referenced.
 

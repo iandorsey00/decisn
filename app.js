@@ -441,10 +441,10 @@ function spinSlotReel(choices, result) {
       break;
     }
   }
-  const tileHeight = elements.slotReel.querySelector(".choice-tile")?.getBoundingClientRect().height || 52;
-  const gap = Number.parseFloat(getComputedStyle(elements.slotReel).rowGap || "0") || 0;
-  const centerOffset = tileHeight + gap;
-  const travel = Math.max(0, targetIndex * (tileHeight + gap) - centerOffset);
+  const targetTile = elements.slotReel.querySelectorAll(".choice-tile")[targetIndex];
+  const slotWindow = elements.slotWindow;
+  const tileHeight = targetTile?.getBoundingClientRect().height || 52;
+  const travel = Math.max(0, (targetTile?.offsetTop || 0) + tileHeight / 2 - slotWindow.clientHeight / 2);
 
   elements.slotReel.style.transform = `translateY(-${travel}px)`;
   return targetIndex;
@@ -658,17 +658,11 @@ async function runSelectionAnimation(result, choices) {
   elements.resultPanel.classList.add("is-spinning");
   clearSlotHighlight();
   resetSlotReel();
-
-  for (let index = 0; index < 14; index += 1) {
-    const nextChoice = choices[cryptoRandomIndex(choices.length)].label;
-    setSlotHighlight(nextChoice);
-    elements.resultValue.textContent = getDisplayLabel(nextChoice);
-    await sleep(index < 9 ? 62 : 95);
-  }
+  await nextAnimationFrame();
 
   const targetIndex = spinSlotReel(choices, result);
-  setSlotWinnerAtIndex(targetIndex);
   await sleep(900);
+  setSlotWinnerAtIndex(targetIndex);
   elements.resultPanel.classList.remove("is-spinning");
   elements.resultValue.textContent = getDisplayLabel(result);
 }
@@ -941,6 +935,7 @@ function bindElements() {
   elements.resultPanel = document.querySelector("#result-panel");
   elements.resultValue = document.querySelector("#result-value");
   elements.slotReel = document.querySelector("#slot-reel");
+  elements.slotWindow = document.querySelector(".slot-window");
   elements.statusLine = document.querySelector("#status-line");
   elements.wheelDisc = document.querySelector("#wheel-disc");
   elements.wheelSpinner = document.querySelector("#wheel-spinner");
