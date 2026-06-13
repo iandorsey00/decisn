@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Decisn</title>
+  <rect width="512" height="512" rx="112" fill="#000000"/>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="40">
+    <path d="M112 170h50c39 0 67 18 86 54l18 34"/>
+    <path d="M112 342h50c39 0 67-18 86-54l18-34"/>
+    <path d="M300 170h86"/>
+    <path d="m356 122 48 48-48 48"/>
+    <path d="M300 342h86"/>
+    <path d="m356 294 48 48-48 48"/>
+  </g>
+</svg>

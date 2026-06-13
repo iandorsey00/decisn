@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f7f7f8">
+    <meta
+      name="description"
+      content="Decisn is a local-first bilingual decision picker with optional weighted choices."
+    >
+    <title>Decisn</title>
+    <link rel="icon" type="image/svg+xml" href="assets/decisn-icon.svg">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar" aria-label="Application header">
+        <div class="brand-lockup">
+          <h1 class="brand-mark" data-i18n="appName">Decisn</h1>
+        </div>
+      </header>
+
+      <main class="workspace-layout">
+        <section class="result-stage" data-i18n-attr="aria-label:decisionPanelLabel">
+          <div class="result-panel animation-slot" id="result-panel" aria-live="polite" role="status">
+            <div class="slot-stage" id="slot-stage" aria-hidden="true">
+              <div class="slot-window">
+                <div class="slot-reel" id="slot-reel"></div>
+              </div>
+            </div>
+            <div class="wheel-stage" id="wheel-stage" aria-hidden="true">
+              <div class="wheel-pointer"></div>
+              <div class="wheel-spinner" id="wheel-spinner">
+                <div class="wheel-disc" id="wheel-disc"></div>
+              </div>
+              <div class="wheel-labels" id="wheel-labels"></div>
+            </div>
+            <p class="result-value" id="result-value" data-i18n="resultEmpty">No decision yet</p>
+          </div>
+          <div class="result-actions">
+            <button class="tool-button compact" id="download-image" type="button" data-i18n="downloadImage" disabled>
+              Download Image
+            </button>
+            <button class="tool-button compact" id="share-image" type="button" data-i18n="shareImage" disabled>
+              Share Image
+            </button>
+          </div>
+        </section>
+
+        <section class="action-stage" data-i18n-attr="aria-label:primaryActionLabel">
+          <button class="decide-button" id="decide-button" type="submit" form="decision-form" data-i18n="decide">Decide</button>
+          <p class="status-line" id="status-line" role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="decision-panel" data-i18n-attr="aria-label:choicesPanelLabel">
+          <form class="decision-form" id="decision-form">
+            <label class="choice-field" for="choices-input">
+              <span data-i18n="choiceLabel">Choice list</span>
+              <textarea
+                id="choices-input"
+                name="choices"
+                rows="9"
+                spellcheck="false"
+                data-i18n-attr="placeholder:choicePlaceholder"
+              ></textarea>
+            </label>
+
+            <details class="options-drawer">
+              <summary data-i18n="options">Options</summary>
+              <div class="options-body">
+                <fieldset class="option-group">
+                  <legend data-i18n="languageLabel">Language</legend>
+                  <div class="segmented-control language-switch" aria-label="Language">
+                    <button class="option-tab" type="button" data-language="en" aria-pressed="true">English</button>
+                    <button class="option-tab" type="button" data-language="zh" aria-pressed="false">中文</button>
+                  </div>
+                </fieldset>
+
+                <fieldset class="option-group">
+                  <legend data-i18n="animationStyle">Animation</legend>
+                  <div class="segmented-control">
+                    <button class="option-tab" type="button" data-animation="slot" aria-pressed="true">
+                      <span data-i18n="slotMachine">Slot machine</span>
+                    </button>
+                    <button class="option-tab" type="button" data-animation="wheel" aria-pressed="false">
+                      <span data-i18n="wheel">Wheel</span>
+                    </button>
+                  </div>
+                </fieldset>
+
+                <fieldset class="option-group">
+                  <legend data-i18n="theme">Theme</legend>
+                  <div class="segmented-control">
+                    <button class="option-tab" type="button" data-theme-option="system" aria-pressed="true">
+                      <span data-i18n="themeSystem">System</span>
+                    </button>
+                    <button class="option-tab" type="button" data-theme-option="light" aria-pressed="false">
+                      <span data-i18n="themeLight">Light</span>
+                    </button>
+                    <button class="option-tab" type="button" data-theme-option="dark" aria-pressed="false">
+                      <span data-i18n="themeDark">Dark</span>
+                    </button>
+                  </div>
+                </fieldset>
+
+                <fieldset class="option-group">
+                  <legend data-i18n="accentColor">Accent color</legend>
+                  <div class="accent-grid">
+                    <button class="accent-swatch is-blue" type="button" data-accent="blue" aria-pressed="true" data-i18n-attr="aria-label:accentBlue"></button>
+                    <button class="accent-swatch is-cyan" type="button" data-accent="cyan" aria-pressed="false" data-i18n-attr="aria-label:accentCyan"></button>
+                    <button class="accent-swatch is-teal" type="button" data-accent="teal" aria-pressed="false" data-i18n-attr="aria-label:accentTeal"></button>
+                    <button class="accent-swatch is-green" type="button" data-accent="green" aria-pressed="false" data-i18n-attr="aria-label:accentGreen"></button>
+                    <button class="accent-swatch is-lime" type="button" data-accent="lime" aria-pressed="false" data-i18n-attr="aria-label:accentLime"></button>
+                    <button class="accent-swatch is-yellow" type="button" data-accent="yellow" aria-pressed="false" data-i18n-attr="aria-label:accentYellow"></button>
+                    <button class="accent-swatch is-orange" type="button" data-accent="orange" aria-pressed="false" data-i18n-attr="aria-label:accentOrange"></button>
+                    <button class="accent-swatch is-red" type="button" data-accent="red" aria-pressed="false" data-i18n-attr="aria-label:accentRed"></button>
+                    <button class="accent-swatch is-pink" type="button" data-accent="pink" aria-pressed="false" data-i18n-attr="aria-label:accentPink"></button>
+                    <button class="accent-swatch is-purple" type="button" data-accent="purple" aria-pressed="false" data-i18n-attr="aria-label:accentPurple"></button>
+                  </div>
+                </fieldset>
+
+                <section class="input-reference" aria-labelledby="input-reference-title">
+                  <h3 id="input-reference-title" data-i18n="inputReference">Input reference</h3>
+                  <ul>
+                    <li data-i18n="referenceCommas">Use commas, Chinese commas, or line breaks.</li>
+                    <li data-i18n="referenceWeights">Use option:3 or option:25% for weights.</li>
+                    <li data-i18n="referenceDefaultWeight">Choices without weights count as 1.</li>
+                  </ul>
+                </section>
+              </div>
+            </details>
+
+            <div class="form-actions">
+              <button class="tool-button" id="copy-link" type="button" data-i18n="copyLink">Copy Link</button>
+            </div>
+          </form>
+        </section>
+
+        <aside class="history-panel" aria-labelledby="history-title">
+          <div class="panel-heading compact">
+            <h2 id="history-title" data-i18n="history">History</h2>
+            <button class="tool-button compact danger-action" id="clear-history" type="button" data-i18n="clearHistory">
+              Clear History
+            </button>
+          </div>
+
+          <ol class="history-list" id="history-list"></ol>
+        </aside>
+      </main>
+
+      <footer class="site-footer">
+        <p>Decisn 0.1.0 © 2026 Ian Dorsey · Open source under the MIT License</p>
+      </footer>
+    </div>
+  </body>
+</html>

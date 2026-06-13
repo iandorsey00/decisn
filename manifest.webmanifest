@@ -1,0 +1,16 @@
+{
+  "name": "Decisn",
+  "short_name": "Decisn",
+  "description": "A local-first bilingual decision picker with optional weighted choices.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f7f8",
+  "theme_color": "#f7f7f8",
+  "icons": [
+    {
+      "src": "assets/decisn-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
