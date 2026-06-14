@@ -45,6 +45,13 @@ const translations = {
     copyLink: "Copy Link",
     downloadImage: "Download Image",
     shareImage: "Share Image",
+    previewImage: "Share",
+    imagePreview: "Image Preview",
+    imagePreviewLabel: "Result image preview",
+    includeDateTime: "Date/time",
+    includeChoices: "Choices",
+    includeProbabilities: "Probabilities",
+    hidePreview: "Hide image preview",
     options: "Options",
     animationStyle: "Animation",
     slotMachine: "Slot machine",
@@ -65,7 +72,7 @@ const translations = {
     accentPink: "Pink accent",
     accentPurple: "Purple accent",
     inputReference: "Input reference",
-    referenceCommas: "Use commas, Chinese commas, or line breaks. Escape literal comma separators with a backslash, and backslashes as \\\\.",
+    referenceCommas: "Use commas, Chinese commas, or line breaks. Escape literal comma separators or colons with a backslash, and backslashes as \\\\.",
     referenceWeights: "Use option:3, option:0.5, option:1/365, or option:25% for weights. Spaces and parentheses are okay.",
     referenceDefaultWeight: "Choices without weights count as 1.",
     resultEmpty: "Ready",
@@ -98,6 +105,13 @@ const translations = {
     copyLink: "复制链接",
     downloadImage: "下载图片",
     shareImage: "分享图片",
+    previewImage: "分享",
+    imagePreview: "图片预览",
+    imagePreviewLabel: "结果图片预览",
+    includeDateTime: "日期时间",
+    includeChoices: "选项",
+    includeProbabilities: "概率",
+    hidePreview: "隐藏图片预览",
     options: "选项",
     animationStyle: "动画",
     slotMachine: "老虎机",
@@ -118,7 +132,7 @@ const translations = {
     accentPink: "粉色强调色",
     accentPurple: "紫色强调色",
     inputReference: "输入参考",
-    referenceCommas: "支持英文逗号、中文逗号和换行。选项里的逗号分隔符前加反斜杠，反斜杠写作 \\\\。",
+    referenceCommas: "支持英文逗号、中文逗号和换行。选项里的逗号分隔符或冒号前加反斜杠，反斜杠写作 \\\\。",
     referenceWeights: "可用 选项:3、选项:0.5、选项:1/365 或 选项:25% 设置权重。空格和括号都可以。",
     referenceDefaultWeight: "未设置权重的选项按 1 计算。",
     resultEmpty: "待选择",
@@ -151,8 +165,19 @@ const state = {
   choicesText: "",
   history: [],
   selected: "",
+  selectedAt: "",
   isChoosing: false,
   lastChoices: [],
+  imageOptions: {
+    showChoices: true,
+    showDateTime: true,
+    showProbabilities: false,
+  },
+  imagePreviewOpen: true,
+  languageInUrl: false,
+  previewUrl: "",
+  previewRenderId: 0,
+  shouldAutoDecide: false,
 };
 
 const elements = {};
@@ -201,6 +226,12 @@ function getInitialLanguage() {
   return browserLanguage.startsWith("zh") ? "zh" : "en";
 }
 
+function hasExplicitUrlLanguage() {
+  const params = new URLSearchParams(window.location.search);
+  const urlLanguage = params.get("lang");
+  return Boolean(urlLanguage && SUPPORTED_LANGUAGES.has(urlLanguage));
+}
+
 function getInitialAnimation() {
   const params = new URLSearchParams(window.location.search);
   const urlAnimation = params.get("animation") || params.get("mode");
@@ -230,15 +261,15 @@ function parseChoices(input) {
 
   let usedFallbackWeight = false;
   const choices = entries.map((entry) => {
-    const separatorIndex = entry.lastIndexOf(":");
+    const separatorIndex = findWeightSeparatorIndex(entry);
 
     if (separatorIndex > 0) {
-      const label = entry.slice(0, separatorIndex).trim();
+      const label = unescapeChoiceLabel(entry.slice(0, separatorIndex).trim());
       const weightText = entry.slice(separatorIndex + 1).trim();
       const parsedWeight = parseWeight(weightText);
 
-      if (label && Number.isFinite(parsedWeight) && parsedWeight > 0) {
-        return { label, weight: parsedWeight };
+      if (label && Number.isFinite(parsedWeight.value) && parsedWeight.value > 0) {
+        return { label, weight: parsedWeight.value, weightText: parsedWeight.text };
       }
 
       if (label && weightText.length === 0) {
@@ -252,10 +283,30 @@ function parseChoices(input) {
       }
     }
 
-    return { label: entry, weight: 1 };
+    return { label: unescapeChoiceLabel(entry), weight: 1 };
   });
 
   return { choices, usedFallbackWeight };
+}
+
+function findWeightSeparatorIndex(entry) {
+  for (let index = entry.length - 1; index > 0; index -= 1) {
+    if (entry[index] === ":" && !isEscapedCharacter(entry, index)) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function isEscapedCharacter(text, index) {
+  let backslashCount = 0;
+
+  for (let cursor = index - 1; cursor >= 0 && text[cursor] === "\\"; cursor -= 1) {
+    backslashCount += 1;
+  }
+
+  return backslashCount % 2 === 1;
 }
 
 function splitChoiceEntries(input) {
@@ -296,29 +347,36 @@ function parseWeight(weightText) {
     const fractionParts = withoutPercent.split("/");
 
     if (fractionParts.length !== 2) {
-      return Number.NaN;
+      return { text: normalizedWeight, value: Number.NaN };
     }
 
     const numerator = Number(fractionParts[0]);
     const denominator = Number(fractionParts[1]);
 
-    return denominator > 0 ? numerator / denominator : Number.NaN;
+    return {
+      text: normalizedWeight,
+      value: denominator > 0 ? numerator / denominator : Number.NaN,
+    };
   }
 
-  return Number(withoutPercent);
+  return { text: normalizedWeight, value: Number(withoutPercent) };
 }
 
 function serializeChoicesForQuery(input) {
   return parseChoices(input).choices
     .map((choice) => {
       const label = escapeChoiceLabel(choice.label);
-      return choice.weight === 1 ? label : `${label}:${choice.weight}`;
+      return choice.weightText ? `${label}:${choice.weightText}` : label;
     })
     .join(",");
 }
 
 function escapeChoiceLabel(label) {
-  return label.replace(/\\/g, "\\\\").replace(/[,，、]/g, "\\$&");
+  return label.replace(/\\/g, "\\\\").replace(/[,，、:]/g, "\\$&");
+}
+
+function unescapeChoiceLabel(label) {
+  return label.replace(/\\:/g, ":");
 }
 
 function cryptoRandomUnit() {
@@ -413,6 +471,10 @@ function renderTranslations() {
 
   document.querySelectorAll("[data-theme-option]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.themeOption === state.theme));
+  });
+
+  document.querySelectorAll("[data-image-option]").forEach((input) => {
+    input.checked = Boolean(state.imageOptions[input.dataset.imageOption]);
   });
 }
 
@@ -519,9 +581,10 @@ function resetSlotReel() {
 function spinSlotReel(choices, result) {
   const visibleChoices = choices.slice(0, 16);
   const reelChoices = getSlotReelChoices(visibleChoices);
+  const lastBalancedIndex = Math.max(0, reelChoices.length - 3);
   let targetIndex = 0;
 
-  for (let index = reelChoices.length - 1; index >= 0; index -= 1) {
+  for (let index = lastBalancedIndex; index >= 0; index -= 1) {
     if (reelChoices[index].label === result) {
       targetIndex = index;
       break;
@@ -575,6 +638,7 @@ function render() {
   renderChoiceAnimations();
   renderResult();
   renderHistory();
+  void renderImagePreview();
 }
 
 function setStatus(messageKey, replacements = {}) {
@@ -613,7 +677,7 @@ function persistTheme() {
   }
 }
 
-function updateUrlFromChoices() {
+function buildUrlFromChoices({ includeLanguage = state.languageInUrl } = {}) {
   const params = new URLSearchParams();
   const trimmedChoices = serializeChoicesForQuery(elements.choicesInput.value);
 
@@ -621,12 +685,22 @@ function updateUrlFromChoices() {
     params.set("q", trimmedChoices);
   }
 
-  params.set("lang", state.language);
+  if (includeLanguage) {
+    params.set("lang", state.language);
+  }
+
   params.set("animation", state.animation);
 
-  const nextUrl = `${window.location.pathname}?${params.toString()}`;
-  window.history.replaceState(null, "", nextUrl);
+  const query = params.toString();
+  const nextUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+
   return new URL(nextUrl, window.location.href).href;
+}
+
+function updateUrlFromChoices() {
+  const nextUrl = buildUrlFromChoices();
+  window.history.replaceState(null, "", nextUrl);
+  return nextUrl;
 }
 
 function setChoosing(isChoosing) {
@@ -635,6 +709,11 @@ function setChoosing(isChoosing) {
   elements.copyLink.disabled = isChoosing;
   elements.downloadImage.disabled = isChoosing || !state.selected;
   elements.shareImage.disabled = isChoosing || !state.selected;
+  elements.previewImage.disabled = isChoosing || !state.selected;
+  elements.hideImagePreview.disabled = isChoosing;
+  elements.imageOptionInputs.forEach((input) => {
+    input.disabled = isChoosing || !state.selected;
+  });
   document.querySelectorAll("[data-animation]").forEach((button) => {
     button.disabled = isChoosing;
   });
@@ -916,12 +995,16 @@ function drawImageHeader(context, theme) {
   context.font = "800 54px Helvetica, Arial, sans-serif";
   context.fillText(t("appName"), 92, 132);
 
+  if (!state.imageOptions.showDateTime) {
+    return;
+  }
+
   context.fillStyle = theme.muted;
   context.font = "700 28px Helvetica, Arial, sans-serif";
   context.fillText(new Intl.DateTimeFormat(state.language === "zh" ? "zh-CN" : "en", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date()), 92, 178);
+  }).format(new Date(state.selectedAt || Date.now())), 92, 178);
 
 }
 
@@ -1046,6 +1129,47 @@ function drawResultImageHero(context, theme) {
   wrapCanvasText(context, state.selected, 92, 302, 650, resultStyle.lineHeight, resultStyle.maxLines);
 }
 
+function formatChoiceForImage(choice) {
+  return choice.weightText ? `${choice.label}:${choice.weightText}` : choice.label;
+}
+
+function formatProbability(value) {
+  if (value > 0 && value < 0.0001) {
+    return "<0.01%";
+  }
+
+  return new Intl.NumberFormat(state.language === "zh" ? "zh-CN" : "en", {
+    maximumFractionDigits: value < 0.01 ? 2 : 1,
+    minimumFractionDigits: 0,
+    style: "percent",
+  }).format(value);
+}
+
+function getImageChoiceText(choices) {
+  if (!state.imageOptions.showProbabilities) {
+    return choices.map(formatChoiceForImage).join(" · ");
+  }
+
+  const totalWeight = choices.reduce((total, choice) => total + choice.weight, 0) || 1;
+  return choices
+    .slice()
+    .sort((choiceA, choiceB) => choiceB.weight - choiceA.weight)
+    .map((choice) => `${choice.label} ${formatProbability(choice.weight / totalWeight)}`)
+    .join(" · ");
+}
+
+function drawResultImageChoices(context, theme, choices) {
+  if (!state.imageOptions.showChoices || choices.length === 0) {
+    return;
+  }
+
+  context.textAlign = "left";
+  context.textBaseline = "alphabetic";
+  context.fillStyle = theme.muted;
+  context.font = "700 22px Helvetica, Arial, sans-serif";
+  wrapCanvasText(context, getImageChoiceText(choices), 92, 536, 650, 28, 2);
+}
+
 async function createResultImageBlob() {
   if (!state.selected) {
     setStatus("chooseFirst");
@@ -1073,7 +1197,49 @@ async function createResultImageBlob() {
     drawSlotImage(context, theme, choices);
   }
 
+  drawResultImageChoices(context, theme, choices);
+
   return canvasToBlob(canvas);
+}
+
+async function renderImagePreview() {
+  if (!state.selected) {
+    elements.imagePreviewPanel.hidden = true;
+    elements.previewImage.hidden = true;
+    elements.imagePreview.removeAttribute("src");
+
+    if (state.previewUrl) {
+      URL.revokeObjectURL(state.previewUrl);
+      state.previewUrl = "";
+    }
+
+    return;
+  }
+
+  if (!state.imagePreviewOpen) {
+    elements.imagePreviewPanel.hidden = true;
+    elements.previewImage.hidden = false;
+    return;
+  }
+
+  const renderId = state.previewRenderId + 1;
+  state.previewRenderId = renderId;
+  elements.imagePreviewPanel.hidden = false;
+  elements.previewImage.hidden = true;
+
+  const blob = await createResultImageBlob();
+
+  if (!blob || renderId !== state.previewRenderId) {
+    return;
+  }
+
+  const previousUrl = state.previewUrl;
+  state.previewUrl = URL.createObjectURL(blob);
+  elements.imagePreview.src = state.previewUrl;
+
+  if (previousUrl) {
+    URL.revokeObjectURL(previousUrl);
+  }
 }
 
 async function downloadResultImage() {
@@ -1118,8 +1284,25 @@ async function shareResultImage() {
   setStatus("imageShared");
 }
 
+function showImagePreview() {
+  if (!state.selected) {
+    setStatus("chooseFirst");
+    return;
+  }
+
+  state.imagePreviewOpen = true;
+  void renderImagePreview();
+}
+
+function hideImagePreview() {
+  state.imagePreviewOpen = false;
+  void renderImagePreview();
+}
+
 async function copyShareLink() {
-  const shareUrl = updateUrlFromChoices();
+  const shareUrl = buildUrlFromChoices({ includeLanguage: false });
+  state.languageInUrl = false;
+  window.history.replaceState(null, "", shareUrl);
 
   try {
     if (!window.navigator.clipboard) {
@@ -1134,7 +1317,7 @@ async function copyShareLink() {
 }
 
 async function decide(event) {
-  event.preventDefault();
+  event?.preventDefault();
 
   if (state.isChoosing) {
     return;
@@ -1145,7 +1328,9 @@ async function decide(event) {
   if (parsed.choices.length === 0) {
     setStatus("noChoices");
     state.selected = "";
+    state.selectedAt = "";
     renderResult();
+    void renderImagePreview();
     return;
   }
 
@@ -1164,12 +1349,14 @@ async function decide(event) {
     await runSelectionAnimation(result, parsed.choices);
   } finally {
     state.selected = result;
+    state.selectedAt = historyItem.timestamp;
     state.lastChoices = parsed.choices;
     state.history = [historyItem, ...state.history].slice(0, 50);
     safeWriteStorage(HISTORY_KEY, state.history);
     renderResult();
     renderHistory();
     setChoosing(false);
+    void renderImagePreview();
   }
 }
 
@@ -1201,6 +1388,8 @@ function switchAnimation(animation) {
   updateUrlFromChoices();
   renderTranslations();
   renderAnimationMode();
+  renderChoiceAnimations();
+  void renderImagePreview();
 }
 
 function switchAccent(accent) {
@@ -1212,6 +1401,7 @@ function switchAccent(accent) {
   persistAccent();
   updatePreferences();
   renderTranslations();
+  void renderImagePreview();
 }
 
 function switchTheme(theme) {
@@ -1223,6 +1413,7 @@ function switchTheme(theme) {
   persistTheme();
   updatePreferences();
   renderTranslations();
+  void renderImagePreview();
 }
 
 function initFromUrl() {
@@ -1232,6 +1423,7 @@ function initFromUrl() {
   if (queryChoices) {
     state.choicesText = queryChoices;
     elements.choicesInput.value = queryChoices;
+    state.shouldAutoDecide = parseChoices(queryChoices).choices.length > 0;
   }
 }
 
@@ -1243,6 +1435,11 @@ function bindElements() {
   elements.copyLink = document.querySelector("#copy-link");
   elements.downloadImage = document.querySelector("#download-image");
   elements.shareImage = document.querySelector("#share-image");
+  elements.previewImage = document.querySelector("#preview-image");
+  elements.hideImagePreview = document.querySelector("#hide-image-preview");
+  elements.imagePreviewPanel = document.querySelector("#image-preview-panel");
+  elements.imagePreview = document.querySelector("#result-image-preview");
+  elements.imageOptionInputs = document.querySelectorAll("[data-image-option]");
   elements.clearHistory = document.querySelector("#clear-history");
   elements.historyList = document.querySelector("#history-list");
   elements.resultPanel = document.querySelector("#result-panel");
@@ -1257,6 +1454,7 @@ function bindElements() {
 
 function init() {
   bindElements();
+  state.languageInUrl = hasExplicitUrlLanguage();
   state.language = getInitialLanguage();
   state.animation = getInitialAnimation();
   state.accent = getInitialAccent();
@@ -1272,6 +1470,14 @@ function init() {
   elements.downloadImage.addEventListener("click", downloadResultImage);
   elements.shareImage.addEventListener("click", () => {
     void shareResultImage().catch(() => setStatus("imageShareUnavailable"));
+  });
+  elements.previewImage.addEventListener("click", showImagePreview);
+  elements.hideImagePreview.addEventListener("click", hideImagePreview);
+  elements.imageOptionInputs.forEach((input) => {
+    input.addEventListener("change", () => {
+      state.imageOptions[input.dataset.imageOption] = input.checked;
+      void renderImagePreview();
+    });
   });
   elements.clearHistory.addEventListener("click", clearHistory);
 
@@ -1290,6 +1496,12 @@ function init() {
   document.querySelectorAll("[data-theme-option]").forEach((button) => {
     button.addEventListener("click", () => switchTheme(button.dataset.themeOption));
   });
+
+  if (state.shouldAutoDecide) {
+    window.setTimeout(() => {
+      void decide();
+    }, 120);
+  }
 }
 
 window.addEventListener("DOMContentLoaded", init);

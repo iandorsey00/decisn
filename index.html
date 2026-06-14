@@ -39,12 +39,42 @@
             </div>
             <p class="result-value" id="result-value" data-i18n="resultEmpty">Ready</p>
           </div>
-          <div class="result-actions">
-            <button class="tool-button compact" id="share-image" type="button" data-i18n="shareImage" disabled>
-              Share Image
-            </button>
-            <button class="tool-button compact" id="download-image" type="button" data-i18n="downloadImage" disabled>
-              Download Image
+          <section class="image-preview-panel" id="image-preview-panel" hidden>
+            <div class="image-preview-frame">
+              <img id="result-image-preview" alt="Result image preview" data-i18n-attr="alt:imagePreviewLabel">
+            </div>
+            <div class="image-preview-controls">
+              <div class="image-preview-heading">
+                <h2 data-i18n="imagePreview">Image Preview</h2>
+                <button class="icon-button" id="hide-image-preview" type="button" data-i18n-attr="aria-label:hidePreview">×</button>
+              </div>
+              <div class="result-actions export-actions">
+                <button class="tool-button compact" id="share-image" type="button" data-i18n="shareImage" disabled>
+                  Share Image
+                </button>
+                <button class="tool-button compact" id="download-image" type="button" data-i18n="downloadImage" disabled>
+                  Download Image
+                </button>
+              </div>
+              <div class="image-preview-options" data-i18n-attr="aria-label:imagePreview">
+                <label class="checkbox-option">
+                  <input type="checkbox" data-image-option="showDateTime" checked>
+                  <span data-i18n="includeDateTime">Date/time</span>
+                </label>
+                <label class="checkbox-option">
+                  <input type="checkbox" data-image-option="showChoices" checked>
+                  <span data-i18n="includeChoices">Choices</span>
+                </label>
+                <label class="checkbox-option">
+                  <input type="checkbox" data-image-option="showProbabilities">
+                  <span data-i18n="includeProbabilities">Probabilities</span>
+                </label>
+              </div>
+            </div>
+          </section>
+          <div class="result-actions image-preview-toggle">
+            <button class="tool-button compact" id="preview-image" type="button" data-i18n="previewImage" disabled>
+              Share
             </button>
           </div>
         </section>
@@ -124,7 +154,7 @@
                 <section class="input-reference" aria-labelledby="input-reference-title">
                   <h3 id="input-reference-title" data-i18n="inputReference">Input reference</h3>
                   <ul>
-                    <li data-i18n="referenceCommas">Use commas, Chinese commas, or line breaks. Escape literal comma separators with a backslash, and backslashes as \\.</li>
+                    <li data-i18n="referenceCommas">Use commas, Chinese commas, or line breaks. Escape literal comma separators or colons with a backslash, and backslashes as \\.</li>
                     <li data-i18n="referenceWeights">Use option:3, option:0.5, option:1/365, or option:25% for weights.</li>
                     <li data-i18n="referenceDefaultWeight">Choices without weights count as 1.</li>
                   </ul>

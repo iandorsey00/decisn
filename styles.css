@@ -109,6 +109,7 @@ body {
   font-family: var(--font);
   font-size: 16px;
   line-height: 1.4;
+  overflow-x: hidden;
 }
 
 button,
@@ -133,6 +134,13 @@ button:disabled {
 .app-shell {
   min-height: 100vh;
   padding: 12px 20px 20px;
+  overflow-x: clip;
+}
+
+@supports not (overflow: clip) {
+  .app-shell {
+    overflow-x: hidden;
+  }
 }
 
 .topbar,
@@ -169,6 +177,8 @@ button:disabled {
 
 .segmented-control {
   display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
   padding: 3px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -176,6 +186,7 @@ button:disabled {
 }
 
 .option-tab {
+  min-width: 0;
   min-height: 36px;
   padding: 0 14px;
   border: 1px solid transparent;
@@ -184,6 +195,8 @@ button:disabled {
   color: var(--muted);
   cursor: pointer;
   font-weight: 700;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .option-tab[aria-pressed="true"] {
@@ -197,11 +210,13 @@ button:disabled {
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   align-items: start;
+  min-width: 0;
 }
 
 .result-stage,
 .decision-panel,
 .history-panel {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
@@ -258,6 +273,7 @@ button:disabled {
 .choice-field {
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .choice-field span,
@@ -310,6 +326,7 @@ button:disabled {
 .options-body {
   display: grid;
   gap: 14px;
+  min-width: 0;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -337,7 +354,7 @@ button:disabled {
   width: 44px;
   height: 44px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 999px;
   background: var(--swatch);
   cursor: pointer;
 }
@@ -441,8 +458,110 @@ textarea::placeholder {
   justify-content: center;
 }
 
+.image-preview-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(180px, 0.75fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.image-preview-panel[hidden] {
+  display: none;
+}
+
+.image-preview-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.image-preview-heading h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.image-preview-options {
+  display: grid;
+  gap: 8px;
+}
+
+.image-preview-controls {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.export-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
+}
+
+.export-actions .tool-button {
+  width: 100%;
+}
+
+.icon-button {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.icon-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.checkbox-option {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.checkbox-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.image-preview-frame {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-muted);
+}
+
+.image-preview-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .tool-button {
   display: inline-flex;
+  min-width: 0;
   min-height: 44px;
   align-items: center;
   justify-content: center;
@@ -453,6 +572,8 @@ textarea::placeholder {
   color: var(--text);
   cursor: pointer;
   font-weight: 800;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .tool-button.compact {
@@ -490,6 +611,7 @@ textarea::placeholder {
 .result-panel {
   position: relative;
   display: grid;
+  min-width: 0;
   min-height: clamp(260px, 36vh, 390px);
   align-content: center;
   justify-items: center;
@@ -758,7 +880,8 @@ textarea::placeholder {
 @media (hover: hover) {
   .tool-button:hover,
   .option-tab:hover,
-  .accent-swatch:hover {
+  .accent-swatch:hover,
+  .icon-button:hover {
     border-color: var(--accent);
   }
 }
@@ -788,6 +911,10 @@ textarea::placeholder {
   }
 
   .workspace-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .image-preview-panel {
     grid-template-columns: 1fr;
   }
 
