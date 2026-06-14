@@ -1046,13 +1046,6 @@ function drawResultImageHero(context, theme) {
   wrapCanvasText(context, state.selected, 92, 302, 650, resultStyle.lineHeight, resultStyle.maxLines);
 }
 
-function drawResultImageFooter(context, theme, choices) {
-  const modeLabel = state.animation === "wheel" ? t("wheel") : t("slotMachine");
-  context.fillStyle = theme.muted;
-  context.font = "700 24px Helvetica, Arial, sans-serif";
-  context.fillText(`${formatChoiceCount(choices.length)} · ${modeLabel}`, 92, 518);
-}
-
 async function createResultImageBlob() {
   if (!state.selected) {
     setStatus("chooseFirst");
@@ -1069,9 +1062,8 @@ async function createResultImageBlob() {
   canvas.width = width;
   canvas.height = height;
 
-  context.fillStyle = theme.background;
+  context.fillStyle = theme.surface;
   context.fillRect(0, 0, width, height);
-  drawRoundRect(context, 42, 42, width - 84, height - 84, 8, theme.surface, theme.line, 3);
   drawImageHeader(context, theme);
   drawResultImageHero(context, theme);
 
@@ -1080,8 +1072,6 @@ async function createResultImageBlob() {
   } else {
     drawSlotImage(context, theme, choices);
   }
-
-  drawResultImageFooter(context, theme, choices);
 
   return canvasToBlob(canvas);
 }
