@@ -1008,6 +1008,10 @@ function drawRoundRect(context, x, y, width, height, radius, fill, stroke, lineW
 
 function drawImageHeader(context, theme) {
   const title = getDecisionTitle();
+  const formattedDate = new Intl.DateTimeFormat(state.language === "zh" ? "zh-CN" : "en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(state.selectedAt || Date.now()));
 
   context.fillStyle = theme.text;
   context.textAlign = "left";
@@ -1016,33 +1020,32 @@ function drawImageHeader(context, theme) {
   if (title) {
     context.font = "800 48px Helvetica, Arial, sans-serif";
     const titleHeight = wrapCanvasText(context, title, 92, 112, 650, 54, 2);
-    context.fillStyle = theme.accent;
-    context.font = "800 24px Helvetica, Arial, sans-serif";
-    context.fillText(t("appName"), 92, 112 + titleHeight + 10);
-  } else {
-    context.font = "800 54px Helvetica, Arial, sans-serif";
-    context.fillText(t("appName"), 92, 132);
+
+    context.fillStyle = theme.text;
+    context.textAlign = "right";
+    context.fillText(t("appName"), 1108, 112);
+
+    if (!state.imageOptions.showDateTime) {
+      return;
+    }
+
+    context.fillStyle = theme.muted;
+    context.font = "700 22px Helvetica, Arial, sans-serif";
+    context.textAlign = "left";
+    context.fillText(formattedDate, 92, 112 + titleHeight + 8);
+    return;
   }
+
+  context.font = "800 54px Helvetica, Arial, sans-serif";
+  context.fillText(t("appName"), 92, 132);
 
   if (!state.imageOptions.showDateTime) {
     return;
   }
 
   context.fillStyle = theme.muted;
-  context.font = "700 22px Helvetica, Arial, sans-serif";
-  const formattedDate = new Intl.DateTimeFormat(state.language === "zh" ? "zh-CN" : "en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(state.selectedAt || Date.now()));
-  const dateWidth = Math.min(350, context.measureText(formattedDate).width + 42);
-  const dateX = 1108 - dateWidth;
-
-  drawRoundRect(context, dateX, 72, dateWidth, 46, 23, theme.surfaceMuted, theme.line, 2);
-  context.fillStyle = theme.muted;
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillText(formattedDate, dateX + dateWidth / 2, 95);
-
+  context.font = "700 28px Helvetica, Arial, sans-serif";
+  context.fillText(formattedDate, 92, 178);
 }
 
 function drawSlotImage(context, theme, choices) {
