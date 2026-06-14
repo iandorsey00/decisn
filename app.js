@@ -80,7 +80,7 @@ const translations = {
     copyFailed: "Link ready. Copy it from the address bar.",
     imageDownloaded: "Image downloaded.",
     imageShared: "Image shared.",
-    imageShareUnavailable: "Sharing is not available here. Image downloaded instead.",
+    imageShareUnavailable: "Sharing is not available here. Use Download Image instead.",
     chooseFirst: "Decide first, then share the image.",
     historyCleared: "History cleared.",
     languageLabel: "Language",
@@ -133,7 +133,7 @@ const translations = {
     copyFailed: "链接已生成，请从地址栏复制。",
     imageDownloaded: "图片已下载。",
     imageShared: "图片已分享。",
-    imageShareUnavailable: "此处无法直接分享，已改为下载图片。",
+    imageShareUnavailable: "此处无法直接分享，请改用下载图片。",
     chooseFirst: "请先选择，再分享图片。",
     historyCleared: "历史记录已清除。",
     languageLabel: "语言",
@@ -775,33 +775,81 @@ async function runSelectionAnimation(result, choices) {
   elements.resultValue.textContent = getDisplayLabel(result);
 }
 
-function wrapCanvasText(context, text, x, y, maxWidth, lineHeight, maxLines = 3) {
-  const words = text.split(/\s+/);
+function fitCanvasLine(context, line, maxWidth) {
+  let fittedLine = line;
+
+  while (fittedLine && context.measureText(`${fittedLine}...`).width > maxWidth) {
+    fittedLine = fittedLine.slice(0, -1);
+  }
+
+  return `${fittedLine || line.slice(0, 1)}...`;
+}
+
+function splitCanvasToken(context, token, maxWidth) {
+  if (context.measureText(token).width <= maxWidth) {
+    return [token];
+  }
+
+  const chunks = [];
+  let currentChunk = "";
+
+  Array.from(token).forEach((character) => {
+    const testChunk = `${currentChunk}${character}`;
+
+    if (context.measureText(testChunk).width <= maxWidth || !currentChunk) {
+      currentChunk = testChunk;
+      return;
+    }
+
+    chunks.push(currentChunk);
+    currentChunk = character;
+  });
+
+  if (currentChunk) {
+    chunks.push(currentChunk);
+  }
+
+  return chunks;
+}
+
+function getCanvasTextLines(context, text, maxWidth, maxLines) {
+  const words = String(text).trim().split(/\s+/).filter(Boolean);
   const lines = [];
   let currentLine = "";
 
   words.forEach((word) => {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    splitCanvasToken(context, word, maxWidth).forEach((token) => {
+      const testLine = currentLine ? `${currentLine} ${token}` : token;
 
-    if (context.measureText(testLine).width <= maxWidth || !currentLine) {
-      currentLine = testLine;
-      return;
-    }
+      if (context.measureText(testLine).width <= maxWidth || !currentLine) {
+        currentLine = testLine;
+        return;
+      }
 
-    lines.push(currentLine);
-    currentLine = word;
+      lines.push(currentLine);
+      currentLine = token;
+    });
   });
 
   if (currentLine) {
     lines.push(currentLine);
   }
 
-  lines.slice(0, maxLines).forEach((line, index) => {
-    const suffix = index === maxLines - 1 && lines.length > maxLines ? "..." : "";
-    context.fillText(`${line}${suffix}`, x, y + index * lineHeight, maxWidth);
+  if (lines.length > maxLines) {
+    return [...lines.slice(0, maxLines - 1), fitCanvasLine(context, lines[maxLines - 1], maxWidth)];
+  }
+
+  return lines;
+}
+
+function wrapCanvasText(context, text, x, y, maxWidth, lineHeight, maxLines = 3) {
+  const lines = getCanvasTextLines(context, text, maxWidth, maxLines);
+
+  lines.forEach((line, index) => {
+    context.fillText(line, x, y + index * lineHeight);
   });
 
-  return Math.min(lines.length, maxLines) * lineHeight;
+  return lines.length * lineHeight;
 }
 
 function canvasToBlob(canvas) {
@@ -863,7 +911,7 @@ function drawRoundRect(context, x, y, width, height, radius, fill, stroke, lineW
   context.stroke();
 }
 
-function drawImageHeader(context, theme, width) {
+function drawImageHeader(context, theme) {
   context.fillStyle = theme.text;
   context.font = "800 54px Helvetica, Arial, sans-serif";
   context.fillText(t("appName"), 92, 132);
@@ -875,28 +923,21 @@ function drawImageHeader(context, theme, width) {
     timeStyle: "short",
   }).format(new Date()), 92, 178);
 
-  context.fillStyle = theme.accent;
-  context.font = "800 24px Helvetica, Arial, sans-serif";
-  context.fillText("decisn", 92, 570);
-
-  context.strokeStyle = mixColor(theme.accent, theme.surface, 0.28);
-  context.lineWidth = 22;
-  context.beginPath();
-  context.arc(width - 180, 142, 92, Math.PI * 0.12, Math.PI * 1.64);
-  context.stroke();
 }
 
 function drawSlotImage(context, theme, choices) {
   const labels = choices.map((choice) => choice.label);
   const selectedIndex = Math.max(0, labels.indexOf(state.selected));
-  const previousLabel = labels.length ? labels[(selectedIndex - 1 + labels.length) % labels.length] : "";
-  const nextLabel = labels.length ? labels[(selectedIndex + 1) % labels.length] : "";
-  const tileLabels = [previousLabel, state.selected, nextLabel];
-  const slotX = 92;
-  const slotY = 232;
-  const slotWidth = 600;
-  const tileHeight = 76;
-  const tileGap = 14;
+  const tileLabels = [
+    labels.length ? labels[(selectedIndex - 1 + labels.length) % labels.length] : "",
+    state.selected,
+    labels.length ? labels[(selectedIndex + 1) % labels.length] : "",
+  ];
+  const slotX = 790;
+  const slotY = 222;
+  const slotWidth = 270;
+  const tileHeight = 54;
+  const tileGap = 12;
   const slotHeight = tileHeight * 3 + tileGap * 2 + 28;
 
   drawRoundRect(context, slotX, slotY, slotWidth, slotHeight, 8, theme.accentSofter, mixColor(theme.accent, theme.line, 0.35), 3);
@@ -906,9 +947,9 @@ function drawSlotImage(context, theme, choices) {
     const y = slotY + 14 + index * (tileHeight + tileGap);
     drawRoundRect(
       context,
-      slotX + 18,
+      slotX + 16,
       y,
-      slotWidth - 36,
+      slotWidth - 32,
       tileHeight,
       8,
       isWinner ? theme.accentSoft : theme.surface,
@@ -916,25 +957,18 @@ function drawSlotImage(context, theme, choices) {
       isWinner ? 4 : 2,
     );
     context.fillStyle = isWinner ? theme.text : theme.muted;
-    context.font = isWinner ? "800 44px Helvetica, Arial, sans-serif" : "800 30px Helvetica, Arial, sans-serif";
+    context.font = isWinner ? "800 22px Helvetica, Arial, sans-serif" : "800 18px Helvetica, Arial, sans-serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
-    wrapCanvasText(context, label, slotX + slotWidth / 2, y + tileHeight / 2 - 5, slotWidth - 96, isWinner ? 48 : 34, 1);
+    wrapCanvasText(context, label, slotX + slotWidth / 2, y + tileHeight / 2 - 7, slotWidth - 54, 22, 1);
   });
-
-  context.textAlign = "left";
-  context.textBaseline = "alphabetic";
-  context.fillStyle = theme.text;
-  context.font = "800 92px Helvetica, Arial, sans-serif";
-  wrapCanvasText(context, state.selected, 740, 342, 330, 98, 2);
 }
 
 function drawWheelImage(context, theme, choices) {
   const segments = getWheelSegments(choices);
-  const centerX = 360;
-  const centerY = 350;
-  const radius = 174;
-  const labelSegments = getWheelLabelSegments(segments);
+  const centerX = 930;
+  const centerY = 330;
+  const radius = 142;
 
   segments.forEach((segment, index) => {
     const start = (segment.startPercent / 100) * Math.PI * 2 - Math.PI / 2;
@@ -955,23 +989,17 @@ function drawWheelImage(context, theme, choices) {
   context.arc(centerX, centerY, radius, 0, Math.PI * 2);
   context.stroke();
 
-  labelSegments.forEach((segment) => {
+  getWheelLabelSegments(segments).slice(0, 10).forEach((segment) => {
     const angle = (segment.midDegrees - 90) * (Math.PI / 180);
-    const x = centerX + Math.cos(angle) * radius * 0.62;
-    const y = centerY + Math.sin(angle) * radius * 0.62;
+    const x = centerX + Math.cos(angle) * radius * 0.58;
+    const y = centerY + Math.sin(angle) * radius * 0.58;
 
     context.fillStyle = theme.text;
-    context.font = "800 18px Helvetica, Arial, sans-serif";
+    context.font = "800 13px Helvetica, Arial, sans-serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
-    wrapCanvasText(context, segment.choice.label, x, y - 8, 82, 20, 1);
+    wrapCanvasText(context, segment.choice.label, x, y - 6, 62, 15, 1);
   });
-
-  if (labelSegments.length < segments.length) {
-    context.fillStyle = theme.muted;
-    context.font = "800 22px Helvetica, Arial, sans-serif";
-    context.fillText("...", centerX, centerY + radius * 0.72);
-  }
 
   context.fillStyle = theme.surface;
   context.strokeStyle = theme.accent;
@@ -983,17 +1011,46 @@ function drawWheelImage(context, theme, choices) {
 
   context.fillStyle = theme.accent;
   context.beginPath();
-  context.moveTo(centerX, centerY - radius - 14);
-  context.lineTo(centerX - 16, centerY - radius + 18);
-  context.lineTo(centerX + 16, centerY - radius + 18);
+  context.moveTo(centerX - 16, centerY - radius - 14);
+  context.lineTo(centerX + 16, centerY - radius - 14);
+  context.lineTo(centerX, centerY - radius + 18);
   context.closePath();
   context.fill();
+}
+
+function getCanvasResultFont(result) {
+  const length = Array.from(result).length;
+
+  if (length > 100) {
+    return { font: "800 42px Helvetica, Arial, sans-serif", lineHeight: 50, maxLines: 4 };
+  }
+
+  if (length > 64) {
+    return { font: "800 52px Helvetica, Arial, sans-serif", lineHeight: 62, maxLines: 4 };
+  }
+
+  if (length > 34) {
+    return { font: "800 68px Helvetica, Arial, sans-serif", lineHeight: 78, maxLines: 3 };
+  }
+
+  return { font: "800 96px Helvetica, Arial, sans-serif", lineHeight: 106, maxLines: 2 };
+}
+
+function drawResultImageHero(context, theme) {
+  const resultStyle = getCanvasResultFont(state.selected);
 
   context.textAlign = "left";
   context.textBaseline = "alphabetic";
   context.fillStyle = theme.text;
-  context.font = "800 96px Helvetica, Arial, sans-serif";
-  wrapCanvasText(context, state.selected, 660, 344, 410, 104, 2);
+  context.font = resultStyle.font;
+  wrapCanvasText(context, state.selected, 92, 302, 650, resultStyle.lineHeight, resultStyle.maxLines);
+}
+
+function drawResultImageFooter(context, theme, choices) {
+  const modeLabel = state.animation === "wheel" ? t("wheel") : t("slotMachine");
+  context.fillStyle = theme.muted;
+  context.font = "700 24px Helvetica, Arial, sans-serif";
+  context.fillText(`${formatChoiceCount(choices.length)} · ${modeLabel}`, 92, 518);
 }
 
 async function createResultImageBlob() {
@@ -1008,7 +1065,6 @@ async function createResultImageBlob() {
   const height = 630;
   const theme = getImageTheme();
   const choices = state.lastChoices.length ? state.lastChoices : parseChoices(elements.choicesInput.value).choices;
-  const choiceSummary = choices.slice(0, 8).map((choice) => choice.label).join(" · ");
 
   canvas.width = width;
   canvas.height = height;
@@ -1016,7 +1072,8 @@ async function createResultImageBlob() {
   context.fillStyle = theme.background;
   context.fillRect(0, 0, width, height);
   drawRoundRect(context, 42, 42, width - 84, height - 84, 8, theme.surface, theme.line, 3);
-  drawImageHeader(context, theme, width);
+  drawImageHeader(context, theme);
+  drawResultImageHero(context, theme);
 
   if (state.animation === "wheel") {
     drawWheelImage(context, theme, choices);
@@ -1024,9 +1081,7 @@ async function createResultImageBlob() {
     drawSlotImage(context, theme, choices);
   }
 
-  context.fillStyle = theme.muted;
-  context.font = "700 26px Helvetica, Arial, sans-serif";
-  wrapCanvasText(context, choiceSummary, 96, 518, 940, 34, 2);
+  drawResultImageFooter(context, theme, choices);
 
   return canvasToBlob(canvas);
 }
@@ -1051,6 +1106,11 @@ async function downloadResultImage() {
 }
 
 async function shareResultImage() {
+  if (!navigator.share) {
+    setStatus("imageShareUnavailable");
+    return;
+  }
+
   const blob = await createResultImageBlob();
 
   if (!blob) {
@@ -1059,18 +1119,13 @@ async function shareResultImage() {
 
   const file = new File([blob], "decisn-result.png", { type: "image/png" });
 
-  if (navigator.canShare?.({ files: [file] }) && navigator.share) {
-    await navigator.share({
-      files: [file],
-      title: t("appName"),
-      text: state.selected,
-    });
-    setStatus("imageShared");
+  if (!navigator.canShare?.({ files: [file] })) {
+    setStatus("imageShareUnavailable");
     return;
   }
 
-  await downloadResultImage();
-  setStatus("imageShareUnavailable");
+  await navigator.share({ files: [file] });
+  setStatus("imageShared");
 }
 
 async function copyShareLink() {
