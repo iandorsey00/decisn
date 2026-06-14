@@ -1129,10 +1129,6 @@ function drawResultImageHero(context, theme) {
   wrapCanvasText(context, state.selected, 92, 302, 650, resultStyle.lineHeight, resultStyle.maxLines);
 }
 
-function formatChoiceForImage(choice) {
-  return choice.weightText ? `${choice.label}:${choice.weightText}` : choice.label;
-}
-
 function formatProbability(value) {
   if (value > 0 && value < 0.0001) {
     return "<0.01%";
@@ -1147,7 +1143,7 @@ function formatProbability(value) {
 
 function getImageChoiceText(choices) {
   if (!state.imageOptions.showProbabilities) {
-    return choices.map(formatChoiceForImage).join(" · ");
+    return choices.map((choice) => choice.label).join(" · ");
   }
 
   const totalWeight = choices.reduce((total, choice) => total + choice.weight, 0) || 1;
