@@ -71,7 +71,7 @@ There is no sign-in, backend, database, or external randomness service.
 
 ## Release
 
-Current version: `0.1.1`
+Current version: `0.1.2`
 
 Project docs:
 
