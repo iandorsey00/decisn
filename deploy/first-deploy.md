@@ -37,6 +37,26 @@ Then open:
 http://127.0.0.1:8765/?q=salad,sushi,soup&lang=zh
 ```
 
+## Deploy
+
+For the current VPS workflow:
+
+```bash
+export REMOTE_HOST=<server-host-or-alias>
+export REMOTE_USER=<ssh-user>
+export REMOTE_TARGET_DIR=<static-site-root>
+./deploy/deploy-static.sh
+```
+
+Optional settings:
+
+```bash
+REMOTE_TMP_DIR=/tmp/decisn-static
+CADDY_CONFIG=/etc/caddy/Caddyfile
+```
+
+The script checks `app.js`, uploads the static files, syncs them into the target directory, validates Caddy, and reloads Caddy.
+
 ## Hosting
 
 Any static host is suitable, including:

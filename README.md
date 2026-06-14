@@ -76,5 +76,6 @@ Current version: `0.1.1`
 Project docs:
 
 - [Static deployment guide](deploy/first-deploy.md)
+- [Daily ops](deploy/daily-ops.md)
 - [Example Caddy site block](deploy/Caddyfile.decisn)
 - [Security pass](docs/security-pass.md)
