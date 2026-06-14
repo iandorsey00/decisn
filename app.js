@@ -173,7 +173,7 @@ const state = {
     showDateTime: true,
     showProbabilities: false,
   },
-  imagePreviewOpen: true,
+  imagePreviewOpen: false,
   languageInUrl: false,
   previewUrl: "",
   previewRenderId: 0,
