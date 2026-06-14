@@ -4,14 +4,69 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f7f7f8">
+    <meta name="color-scheme" content="light dark">
     <meta
       name="description"
-      content="Decisn is a local-first bilingual decision picker with optional weighted choices."
+      content="Decisn is a local-first bilingual decision picker for random choices, weighted probabilities, wheel spins, and shareable lists."
     >
-    <title>Decisn</title>
+    <meta name="application-name" content="Decisn">
+    <meta name="apple-mobile-web-app-title" content="Decisn">
+    <meta name="author" content="Ian Dorsey">
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://decisn.iandorsey.com/">
+    <link rel="alternate" hreflang="en" href="https://decisn.iandorsey.com/">
+    <link rel="alternate" hreflang="zh-Hans" href="https://decisn.iandorsey.com/?lang=zh">
+    <link rel="alternate" hreflang="x-default" href="https://decisn.iandorsey.com/">
+    <meta property="og:site_name" content="Decisn">
+    <meta property="og:title" content="Decisn | Local-first decision picker">
+    <meta
+      property="og:description"
+      content="Choose randomly from a list, with optional weights, shareable links, and no accounts or backend."
+    >
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://decisn.iandorsey.com/">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:locale:alternate" content="zh_CN">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Decisn | Local-first decision picker">
+    <meta
+      name="twitter:description"
+      content="Choose randomly from a list, with optional weights, shareable links, and no accounts or backend."
+    >
+    <title>Decisn | Local-first decision picker</title>
     <link rel="icon" type="image/svg+xml" href="assets/decisn-icon.svg">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="stylesheet" href="styles.css">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Decisn",
+        "alternateName": "帮我选",
+        "url": "https://decisn.iandorsey.com/",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "description": "Decisn is a local-first bilingual decision picker for random choices, weighted probabilities, wheel spins, and shareable lists.",
+        "isAccessibleForFree": true,
+        "inLanguage": ["en", "zh-Hans"],
+        "featureList": [
+          "Random selection",
+          "Weighted choices",
+          "Wheel and slot animations",
+          "Local decision history",
+          "Shareable choice links"
+        ],
+        "author": {
+          "@type": "Person",
+          "name": "Ian Dorsey"
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -181,7 +236,7 @@
       </main>
 
       <footer class="site-footer">
-        <p>Decisn 0.1.2 © 2026 Ian Dorsey · Open source under the MIT License</p>
+        <p>Decisn 0.1.3 © 2026 Ian Dorsey · Open source under the MIT License</p>
       </footer>
     </div>
   </body>
