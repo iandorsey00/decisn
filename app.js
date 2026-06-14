@@ -19,6 +19,20 @@ const SUPPORTED_ACCENTS = new Set([
 ]);
 const SUPPORTED_THEMES = new Set(["system", "light", "dark"]);
 const WHEEL_SHADE_STRENGTHS = [46, 30, 58, 22, 40, 64, 34, 52];
+const MAX_WHEEL_LABELS = 18;
+const MIN_WHEEL_LABEL_DEGREES = 12;
+const ACCENT_COLORS = {
+  blue: "#2563eb",
+  cyan: "#0891b2",
+  teal: "#0f766e",
+  green: "#16a34a",
+  lime: "#65a30d",
+  yellow: "#ca8a04",
+  orange: "#ea580c",
+  red: "#dc2626",
+  pink: "#db2777",
+  purple: "#7c3aed",
+};
 
 const translations = {
   en: {
@@ -51,10 +65,10 @@ const translations = {
     accentPink: "Pink accent",
     accentPurple: "Purple accent",
     inputReference: "Input reference",
-    referenceCommas: "Use commas, Chinese commas, or line breaks.",
-    referenceWeights: "Use option:3 or option:25% for weights. Percent weights are normalized automatically.",
+    referenceCommas: "Use commas, Chinese commas, or line breaks. Escape literal comma separators with a backslash, and backslashes as \\\\.",
+    referenceWeights: "Use option:3, option:0.5, option:1/365, or option:25% for weights. Spaces and parentheses are okay.",
     referenceDefaultWeight: "Choices without weights count as 1.",
-    resultEmpty: "No decision yet",
+    resultEmpty: "Ready",
     choosing: "Choosing...",
     history: "History",
     clearHistory: "Clear History",
@@ -104,10 +118,10 @@ const translations = {
     accentPink: "粉色强调色",
     accentPurple: "紫色强调色",
     inputReference: "输入参考",
-    referenceCommas: "支持英文逗号、中文逗号和换行。",
-    referenceWeights: "可用 选项:3 或 选项:25% 设置权重。百分比会自动按总和归一化。",
+    referenceCommas: "支持英文逗号、中文逗号和换行。选项里的逗号分隔符前加反斜杠，反斜杠写作 \\\\。",
+    referenceWeights: "可用 选项:3、选项:0.5、选项:1/365 或 选项:25% 设置权重。空格和括号都可以。",
     referenceDefaultWeight: "未设置权重的选项按 1 计算。",
-    resultEmpty: "还没有选择",
+    resultEmpty: "待选择",
     choosing: "正在选择...",
     history: "历史记录",
     clearHistory: "清除历史记录",
@@ -188,7 +202,14 @@ function getInitialLanguage() {
 }
 
 function getInitialAnimation() {
+  const params = new URLSearchParams(window.location.search);
+  const urlAnimation = params.get("animation") || params.get("mode");
   const storedAnimation = window.localStorage.getItem(ANIMATION_KEY);
+
+  if (urlAnimation && SUPPORTED_ANIMATIONS.has(urlAnimation)) {
+    return urlAnimation;
+  }
+
   return storedAnimation && SUPPORTED_ANIMATIONS.has(storedAnimation) ? storedAnimation : "slot";
 }
 
@@ -203,8 +224,7 @@ function getInitialTheme() {
 }
 
 function parseChoices(input) {
-  const entries = input
-    .split(/[\n,，、]/)
+  const entries = splitChoiceEntries(input)
     .map((item) => item.trim())
     .filter(Boolean);
 
@@ -215,14 +235,18 @@ function parseChoices(input) {
     if (separatorIndex > 0) {
       const label = entry.slice(0, separatorIndex).trim();
       const weightText = entry.slice(separatorIndex + 1).trim();
-      const normalizedWeight = weightText.endsWith("%") ? weightText.slice(0, -1).trim() : weightText;
-      const parsedWeight = Number(normalizedWeight);
+      const parsedWeight = parseWeight(weightText);
 
       if (label && Number.isFinite(parsedWeight) && parsedWeight > 0) {
         return { label, weight: parsedWeight };
       }
 
       if (label && weightText.length === 0) {
+        usedFallbackWeight = true;
+        return { label, weight: 1 };
+      }
+
+      if (label) {
         usedFallbackWeight = true;
         return { label, weight: 1 };
       }
@@ -234,10 +258,67 @@ function parseChoices(input) {
   return { choices, usedFallbackWeight };
 }
 
+function splitChoiceEntries(input) {
+  const entries = [];
+  let currentEntry = "";
+
+  for (let index = 0; index < input.length; index += 1) {
+    const character = input[index];
+    const nextCharacter = input[index + 1];
+
+    if (character === "\\" && (nextCharacter === "\\" || nextCharacter === "," || nextCharacter === "，" || nextCharacter === "、")) {
+      currentEntry += nextCharacter;
+      index += 1;
+      continue;
+    }
+
+    if (character === "\n" || character === "," || character === "，" || character === "、") {
+      entries.push(currentEntry);
+      currentEntry = "";
+      continue;
+    }
+
+    currentEntry += character;
+  }
+
+  entries.push(currentEntry);
+  return entries;
+}
+
+function parseWeight(weightText) {
+  const normalizedWeight = weightText
+    .trim()
+    .replace(/^\((.*)\)$/, "$1")
+    .replace(/\s+/g, "");
+  const withoutPercent = normalizedWeight.endsWith("%") ? normalizedWeight.slice(0, -1) : normalizedWeight;
+
+  if (withoutPercent.includes("/")) {
+    const fractionParts = withoutPercent.split("/");
+
+    if (fractionParts.length !== 2) {
+      return Number.NaN;
+    }
+
+    const numerator = Number(fractionParts[0]);
+    const denominator = Number(fractionParts[1]);
+
+    return denominator > 0 ? numerator / denominator : Number.NaN;
+  }
+
+  return Number(withoutPercent);
+}
+
 function serializeChoicesForQuery(input) {
   return parseChoices(input).choices
-    .map((choice) => (choice.weight === 1 ? choice.label : `${choice.label}:${choice.weight}`))
+    .map((choice) => {
+      const label = escapeChoiceLabel(choice.label);
+      return choice.weight === 1 ? label : `${label}:${choice.weight}`;
+    })
     .join(",");
+}
+
+function escapeChoiceLabel(label) {
+  return label.replace(/\\/g, "\\\\").replace(/[,，、]/g, "\\$&");
 }
 
 function cryptoRandomUnit() {
@@ -336,12 +417,18 @@ function renderTranslations() {
 }
 
 function renderResult() {
+  const resultText = state.selected || t("resultEmpty");
+  elements.resultValue.classList.toggle("is-long", resultText.length > 18);
+  elements.resultValue.classList.toggle("is-very-long", resultText.length > 36);
+  elements.resultValue.classList.toggle("is-extreme", resultText.length > 72);
+  elements.resultValue.title = state.selected ? resultText : "";
+
   if (!state.selected) {
-    elements.resultValue.textContent = t("resultEmpty");
+    elements.resultValue.textContent = resultText;
     return;
   }
 
-  elements.resultValue.textContent = state.selected;
+  elements.resultValue.textContent = resultText;
 }
 
 function renderChoiceAnimations(choices = parseChoices(elements.choicesInput?.value ?? "").choices) {
@@ -358,9 +445,8 @@ function renderChoiceAnimations(choices = parseChoices(elements.choicesInput?.va
     elements.slotReel.append(createChoiceTile(choice.label, index));
   });
 
-  const wheelLabels = getWheelSegments(choices).slice(0, 32);
-
-  renderWheelRegions(choices);
+  const wheelSegments = renderWheelRegions(choices);
+  const wheelLabels = getWheelLabelSegments(wheelSegments);
   setWheelLabelRotation(0);
 
   wheelLabels.forEach((segment) => {
@@ -536,6 +622,7 @@ function updateUrlFromChoices() {
   }
 
   params.set("lang", state.language);
+  params.set("animation", state.animation);
 
   const nextUrl = `${window.location.pathname}?${params.toString()}`;
   window.history.replaceState(null, "", nextUrl);
@@ -606,6 +693,27 @@ function renderWheelRegions(choices) {
   elements.wheelDisc.style.background = `conic-gradient(${stops.join(", ")})`;
 
   return segments;
+}
+
+function getWheelLabelSegments(segments) {
+  const readableSegments = segments.filter((segment) => {
+    const degrees = (segment.endPercent - segment.startPercent) * 3.6;
+    return degrees >= MIN_WHEEL_LABEL_DEGREES;
+  });
+
+  if (readableSegments.length <= MAX_WHEEL_LABELS) {
+    return readableSegments;
+  }
+
+  return readableSegments
+    .slice()
+    .sort((segmentA, segmentB) => {
+      const sizeA = segmentA.endPercent - segmentA.startPercent;
+      const sizeB = segmentB.endPercent - segmentB.startPercent;
+      return sizeB - sizeA;
+    })
+    .slice(0, MAX_WHEEL_LABELS)
+    .sort((segmentA, segmentB) => segmentA.startPercent - segmentB.startPercent);
 }
 
 function updateWheel(choices, result) {
@@ -690,7 +798,7 @@ function wrapCanvasText(context, text, x, y, maxWidth, lineHeight, maxLines = 3)
 
   lines.slice(0, maxLines).forEach((line, index) => {
     const suffix = index === maxLines - 1 && lines.length > maxLines ? "..." : "";
-    context.fillText(`${line}${suffix}`, x, y + index * lineHeight);
+    context.fillText(`${line}${suffix}`, x, y + index * lineHeight, maxWidth);
   });
 
   return Math.min(lines.length, maxLines) * lineHeight;
@@ -700,6 +808,192 @@ function canvasToBlob(canvas) {
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), "image/png", 0.94);
   });
+}
+
+function hexToRgb(hexColor) {
+  const value = hexColor.replace("#", "");
+  const numericValue = Number.parseInt(value, 16);
+
+  return {
+    r: (numericValue >> 16) & 255,
+    g: (numericValue >> 8) & 255,
+    b: numericValue & 255,
+  };
+}
+
+function rgbToCss({ r, g, b }) {
+  return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+}
+
+function mixColor(colorA, colorB, amount) {
+  const a = hexToRgb(colorA);
+  const b = hexToRgb(colorB);
+
+  return rgbToCss({
+    r: a.r * amount + b.r * (1 - amount),
+    g: a.g * amount + b.g * (1 - amount),
+    b: a.b * amount + b.b * (1 - amount),
+  });
+}
+
+function getImageTheme() {
+  const isDark = state.theme === "dark" || (state.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const accent = ACCENT_COLORS[state.accent] ?? ACCENT_COLORS.blue;
+
+  return {
+    accent,
+    accentSoft: mixColor(accent, isDark ? "#202124" : "#ffffff", 0.28),
+    accentSofter: mixColor(accent, isDark ? "#202124" : "#ffffff", 0.12),
+    background: isDark ? "#151517" : "#f7f7f8",
+    line: isDark ? "#44464d" : "#d9d9de",
+    muted: isDark ? "#b4b6bd" : "#60616a",
+    surface: isDark ? "#202124" : "#ffffff",
+    surfaceMuted: isDark ? "#2a2b2f" : "#f0f0f2",
+    text: isDark ? "#f3f3f4" : "#171717",
+  };
+}
+
+function drawRoundRect(context, x, y, width, height, radius, fill, stroke, lineWidth = 3) {
+  context.fillStyle = fill;
+  context.strokeStyle = stroke;
+  context.lineWidth = lineWidth;
+  context.beginPath();
+  context.roundRect(x, y, width, height, radius);
+  context.fill();
+  context.stroke();
+}
+
+function drawImageHeader(context, theme, width) {
+  context.fillStyle = theme.text;
+  context.font = "800 54px Helvetica, Arial, sans-serif";
+  context.fillText(t("appName"), 92, 132);
+
+  context.fillStyle = theme.muted;
+  context.font = "700 28px Helvetica, Arial, sans-serif";
+  context.fillText(new Intl.DateTimeFormat(state.language === "zh" ? "zh-CN" : "en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date()), 92, 178);
+
+  context.fillStyle = theme.accent;
+  context.font = "800 24px Helvetica, Arial, sans-serif";
+  context.fillText("decisn", 92, 570);
+
+  context.strokeStyle = mixColor(theme.accent, theme.surface, 0.28);
+  context.lineWidth = 22;
+  context.beginPath();
+  context.arc(width - 180, 142, 92, Math.PI * 0.12, Math.PI * 1.64);
+  context.stroke();
+}
+
+function drawSlotImage(context, theme, choices) {
+  const labels = choices.map((choice) => choice.label);
+  const selectedIndex = Math.max(0, labels.indexOf(state.selected));
+  const previousLabel = labels.length ? labels[(selectedIndex - 1 + labels.length) % labels.length] : "";
+  const nextLabel = labels.length ? labels[(selectedIndex + 1) % labels.length] : "";
+  const tileLabels = [previousLabel, state.selected, nextLabel];
+  const slotX = 92;
+  const slotY = 232;
+  const slotWidth = 600;
+  const tileHeight = 76;
+  const tileGap = 14;
+  const slotHeight = tileHeight * 3 + tileGap * 2 + 28;
+
+  drawRoundRect(context, slotX, slotY, slotWidth, slotHeight, 8, theme.accentSofter, mixColor(theme.accent, theme.line, 0.35), 3);
+
+  tileLabels.forEach((label, index) => {
+    const isWinner = index === 1;
+    const y = slotY + 14 + index * (tileHeight + tileGap);
+    drawRoundRect(
+      context,
+      slotX + 18,
+      y,
+      slotWidth - 36,
+      tileHeight,
+      8,
+      isWinner ? theme.accentSoft : theme.surface,
+      isWinner ? theme.accent : theme.line,
+      isWinner ? 4 : 2,
+    );
+    context.fillStyle = isWinner ? theme.text : theme.muted;
+    context.font = isWinner ? "800 44px Helvetica, Arial, sans-serif" : "800 30px Helvetica, Arial, sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    wrapCanvasText(context, label, slotX + slotWidth / 2, y + tileHeight / 2 - 5, slotWidth - 96, isWinner ? 48 : 34, 1);
+  });
+
+  context.textAlign = "left";
+  context.textBaseline = "alphabetic";
+  context.fillStyle = theme.text;
+  context.font = "800 92px Helvetica, Arial, sans-serif";
+  wrapCanvasText(context, state.selected, 740, 342, 330, 98, 2);
+}
+
+function drawWheelImage(context, theme, choices) {
+  const segments = getWheelSegments(choices);
+  const centerX = 360;
+  const centerY = 350;
+  const radius = 174;
+  const labelSegments = getWheelLabelSegments(segments);
+
+  segments.forEach((segment, index) => {
+    const start = (segment.startPercent / 100) * Math.PI * 2 - Math.PI / 2;
+    const end = (segment.endPercent / 100) * Math.PI * 2 - Math.PI / 2;
+    const strength = WHEEL_SHADE_STRENGTHS[index % WHEEL_SHADE_STRENGTHS.length] / 100;
+
+    context.fillStyle = mixColor(theme.accent, segment.choice.label === state.selected ? theme.surface : theme.surfaceMuted, strength);
+    context.beginPath();
+    context.moveTo(centerX, centerY);
+    context.arc(centerX, centerY, radius, start, end);
+    context.closePath();
+    context.fill();
+  });
+
+  context.strokeStyle = mixColor(theme.accent, theme.line, 0.55);
+  context.lineWidth = 5;
+  context.beginPath();
+  context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  context.stroke();
+
+  labelSegments.forEach((segment) => {
+    const angle = (segment.midDegrees - 90) * (Math.PI / 180);
+    const x = centerX + Math.cos(angle) * radius * 0.62;
+    const y = centerY + Math.sin(angle) * radius * 0.62;
+
+    context.fillStyle = theme.text;
+    context.font = "800 18px Helvetica, Arial, sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    wrapCanvasText(context, segment.choice.label, x, y - 8, 82, 20, 1);
+  });
+
+  if (labelSegments.length < segments.length) {
+    context.fillStyle = theme.muted;
+    context.font = "800 22px Helvetica, Arial, sans-serif";
+    context.fillText("...", centerX, centerY + radius * 0.72);
+  }
+
+  context.fillStyle = theme.surface;
+  context.strokeStyle = theme.accent;
+  context.lineWidth = 4;
+  context.beginPath();
+  context.arc(centerX, centerY, 22, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+
+  context.fillStyle = theme.accent;
+  context.beginPath();
+  context.moveTo(centerX, centerY - radius - 14);
+  context.lineTo(centerX - 16, centerY - radius + 18);
+  context.lineTo(centerX + 16, centerY - radius + 18);
+  context.closePath();
+  context.fill();
+
+  context.textAlign = "left";
+  context.textBaseline = "alphabetic";
+  context.fillStyle = theme.text;
+  context.font = "800 96px Helvetica, Arial, sans-serif";
+  wrapCanvasText(context, state.selected, 660, 344, 410, 104, 2);
 }
 
 async function createResultImageBlob() {
@@ -712,54 +1006,27 @@ async function createResultImageBlob() {
   const context = canvas.getContext("2d");
   const width = 1200;
   const height = 630;
+  const theme = getImageTheme();
   const choices = state.lastChoices.length ? state.lastChoices : parseChoices(elements.choicesInput.value).choices;
   const choiceSummary = choices.slice(0, 8).map((choice) => choice.label).join(" · ");
 
   canvas.width = width;
   canvas.height = height;
 
-  context.fillStyle = "#f7f7f8";
+  context.fillStyle = theme.background;
   context.fillRect(0, 0, width, height);
-  context.fillStyle = "#ffffff";
-  context.strokeStyle = "#d9d9de";
-  context.lineWidth = 3;
-  context.beginPath();
-  context.roundRect(42, 42, width - 84, height - 84, 28);
-  context.fill();
-  context.stroke();
+  drawRoundRect(context, 42, 42, width - 84, height - 84, 8, theme.surface, theme.line, 3);
+  drawImageHeader(context, theme, width);
 
-  context.fillStyle = "#2457d6";
-  context.beginPath();
-  context.arc(1010, 160, 78, 0, Math.PI * 2);
-  context.fill();
-  context.strokeStyle = "rgba(36, 87, 214, 0.24)";
-  context.lineWidth = 28;
-  context.beginPath();
-  context.arc(1010, 160, 118, 0, Math.PI * 1.55);
-  context.stroke();
+  if (state.animation === "wheel") {
+    drawWheelImage(context, theme, choices);
+  } else {
+    drawSlotImage(context, theme, choices);
+  }
 
-  context.fillStyle = "#171717";
-  context.font = "800 54px Helvetica, Arial, sans-serif";
-  context.fillText(t("appName"), 92, 132);
-
-  context.fillStyle = "#60616a";
-  context.font = "700 28px Helvetica, Arial, sans-serif";
-  context.fillText(new Intl.DateTimeFormat(state.language === "zh" ? "zh-CN" : "en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date()), 92, 178);
-
-  context.fillStyle = "#171717";
-  context.font = "800 112px Helvetica, Arial, sans-serif";
-  wrapCanvasText(context, state.selected, 92, 330, 880, 120, 2);
-
-  context.fillStyle = "#60616a";
+  context.fillStyle = theme.muted;
   context.font = "700 26px Helvetica, Arial, sans-serif";
   wrapCanvasText(context, choiceSummary, 96, 518, 940, 34, 2);
-
-  context.fillStyle = "#2457d6";
-  context.font = "800 24px Helvetica, Arial, sans-serif";
-  context.fillText("decisn", 92, 570);
 
   return canvasToBlob(canvas);
 }
@@ -851,9 +1118,9 @@ async function decide(event) {
   try {
     await runSelectionAnimation(result, parsed.choices);
   } finally {
-  state.selected = result;
-  state.lastChoices = parsed.choices;
-  state.history = [historyItem, ...state.history].slice(0, 50);
+    state.selected = result;
+    state.lastChoices = parsed.choices;
+    state.history = [historyItem, ...state.history].slice(0, 50);
     safeWriteStorage(HISTORY_KEY, state.history);
     renderResult();
     renderHistory();
@@ -886,6 +1153,7 @@ function switchAnimation(animation) {
 
   state.animation = animation;
   persistAnimation();
+  updateUrlFromChoices();
   renderTranslations();
   renderAnimationMode();
 }

@@ -1,42 +1,23 @@
-# First Deploy
+# Static Deployment Guide
 
-Target domain:
+Decisn is a static app. Deploy the files with any static host that can serve HTML, CSS, JavaScript, and SVG assets over HTTPS.
 
-```text
-decisn.iandorsey.com
-```
+## Files
 
-Target static directory:
+Publish these files from the repository root:
 
 ```text
-/var/www/decisn
+index.html
+app.js
+styles.css
+manifest.webmanifest
+LICENSE
+assets/
 ```
 
-## 1. DNS
+No build step, server runtime, database, sign-in system, or environment variables are required.
 
-Create a DNS record for the domain:
-
-```text
-Type: A
-Name: decisn
-Value: <server IPv4 address>
-```
-
-If the server has IPv6, also add:
-
-```text
-Type: AAAA
-Name: decisn
-Value: <server IPv6 address>
-```
-
-Wait for DNS to resolve:
-
-```bash
-dig decisn.iandorsey.com
-```
-
-## 2. Prepare Files Locally
+## Preflight
 
 From the repository root:
 
@@ -50,117 +31,61 @@ Optional local preview:
 python3 -m http.server 8765
 ```
 
-Open:
+Then open:
 
 ```text
 http://127.0.0.1:8765/?q=salad,sushi,soup&lang=zh
 ```
 
-## 3. Upload Static Files
+## Hosting
 
-Set the remote target:
+Any static host is suitable, including:
 
-```bash
-export REMOTE_HOST=<server-host-or-ip>
-export REMOTE_USER=<ssh-user>
-```
+- Caddy
+- Nginx
+- Apache
+- GitHub Pages
+- Netlify
+- Cloudflare Pages
+- object storage with static website hosting
 
-Create the remote directory:
-
-```bash
-ssh "$REMOTE_USER@$REMOTE_HOST" 'sudo mkdir -p /var/www/decisn && sudo chown -R "$USER":"$USER" /var/www/decisn'
-```
-
-Upload the static app:
-
-```bash
-rsync -av --delete \
-  index.html \
-  app.js \
-  styles.css \
-  manifest.webmanifest \
-  LICENSE \
-  assets/ \
-  "$REMOTE_USER@$REMOTE_HOST:/var/www/decisn/"
-```
-
-If your SSH user should not own `/var/www/decisn` permanently, reset ownership after upload:
-
-```bash
-ssh "$REMOTE_USER@$REMOTE_HOST" 'sudo chown -R root:root /var/www/decisn'
-```
-
-## 4. Caddy
-
-Copy the site block from:
+If using Caddy, adapt the example site block in:
 
 ```text
 deploy/Caddyfile.decisn
 ```
 
-Add it to the server Caddy config, usually:
+Replace the example domain and root path with your own values.
 
-```text
-/etc/caddy/Caddyfile
-```
+## Recommended Headers
 
-Example append:
+Use HTTPS and set conservative static-site headers where your host supports them:
 
-```bash
-cat deploy/Caddyfile.decisn
-```
+- `Content-Security-Policy`
+- `Permissions-Policy`
+- `Referrer-Policy`
+- `X-Content-Type-Options`
+- `X-Frame-Options`
+- `Strict-Transport-Security` after HTTPS is confirmed working
 
-Then on the server, validate and reload:
+## Verify
 
-```bash
-sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl reload caddy
-```
+Manual checks after deployment:
 
-Caddy will request and renew the TLS certificate automatically once DNS points at the server.
-
-## 5. Verify
-
-Check the site:
-
-```text
-https://decisn.iandorsey.com/
-```
-
-Check query loading:
-
-```text
-https://decisn.iandorsey.com/?q=salad,sushi,soup&lang=zh
-```
-
-Manual UI checks:
-
-- language selector in Options
+- query loading with `?q=salad,sushi,soup&lang=zh&animation=wheel`
+- language selector
 - comma, Chinese comma, and line-break parsing
-- numeric weights
-- percent weights
+- numeric, decimal, fraction, and percent weights
 - wheel weighted regions
 - slot reel selection
 - copy link
+- share result image
 - download result image
 - history persistence after reload
 - clear history
 - light, dark, and system theme
 - accent color selection
 
-## 6. Rollback
+## Rollback
 
-Rollback is static-file replacement.
-
-Options:
-
-- redeploy a previous Git commit
-- restore a server-side copy of `/var/www/decisn`
-- temporarily point Caddy root back to a backup directory
-
-After changing Caddy config:
-
-```bash
-sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl reload caddy
-```
+Rollback is static-file replacement. Redeploy a previous Git commit or restore a previous copy of the published static directory.

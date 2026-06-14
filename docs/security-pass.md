@@ -42,12 +42,12 @@ Used APIs:
 
 These APIs are browser-local and do not require application secrets.
 
-## Deployment Security
+## Static Hosting Security
 
-Recommended Caddy controls:
+Recommended static-host controls:
 
-- HTTPS via Caddy automatic certificates
-- `encode gzip zstd`
+- HTTPS
+- static asset compression where available
 - restrictive Content Security Policy
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: DENY`
@@ -59,7 +59,7 @@ The app has no server-side secrets or environment files.
 
 ## Review Notes
 
-- Weighted and percent choices are normalized locally.
+- Numeric, decimal, fraction, and percent choices are normalized locally.
 - The wheel visualization reflects weighted probabilities.
 - The slot reel remains visually equal-choice; weights affect the final selection only.
 - The slot reel animation performs one presentation-only spin to the selected result.

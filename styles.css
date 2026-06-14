@@ -511,13 +511,32 @@ textarea::placeholder {
   position: relative;
   z-index: 2;
   width: 100%;
+  max-width: 100%;
   margin: 0;
   color: var(--text);
   font-size: clamp(3.4rem, 10vw, 7.4rem);
   font-weight: 800;
   line-height: 0.98;
+  max-height: 2.25em;
+  overflow: hidden;
   text-align: center;
   overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.result-value.is-long {
+  font-size: clamp(2.5rem, 7vw, 5.4rem);
+}
+
+.result-value.is-very-long {
+  font-size: clamp(1.8rem, 5vw, 3.8rem);
+  line-height: 1.06;
+}
+
+.result-value.is-extreme {
+  font-size: clamp(1.35rem, 3.2vw, 2.8rem);
+  line-height: 1.12;
+  max-height: 3.6em;
 }
 
 .animation-slot.is-spinning .result-value {
@@ -537,7 +556,7 @@ textarea::placeholder {
 .slot-window {
   position: relative;
   width: min(100%, 420px);
-  height: 178px;
+  height: 164px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
   border-radius: var(--radius);
@@ -566,8 +585,10 @@ textarea::placeholder {
   font-size: 14px;
   font-weight: 800;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.15;
+  max-height: 2.6em;
+  text-align: center;
+  overflow-wrap: anywhere;
   transition: background 120ms ease, border-color 120ms ease, color 120ms ease, transform 120ms ease;
 }
 

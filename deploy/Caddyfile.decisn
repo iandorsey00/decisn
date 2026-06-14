@@ -1,4 +1,4 @@
-decisn.iandorsey.com {
+your-domain.example {
     encode gzip zstd
 
     header {
@@ -10,7 +10,7 @@ decisn.iandorsey.com {
         Strict-Transport-Security "max-age=31536000; includeSubDomains"
     }
 
-    root * /var/www/decisn
+    root * /path/to/decisn
     try_files {path} /index.html
     file_server
 }

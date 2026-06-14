@@ -24,13 +24,15 @@ sushi:1
 soup:4
 ```
 
-Percent weights are accepted and normalized automatically:
+Decimal, fraction, and percent weights are accepted and normalized automatically:
 
 ```text
 salad:25%
-sushi:50%
+sushi:1/365
 soup
 ```
+
+Whitespace around labels, colons, fractions, and percent signs is okay. Parentheses around a weight are also okay, such as `sushi:(1/365)`.
 
 Separators supported:
 
@@ -39,16 +41,21 @@ Separators supported:
 - Chinese enumeration commas: `沙拉、寿司、汤`
 - line breaks
 
+Literal comma separators inside an option can be escaped with a backslash, such as `\,`, `\，`, or `\、`. Literal backslashes can be escaped with `\\`.
+
 ## Query Parameters
 
 - `q`: pre-populates the choice list
 - `lang`: accepts `en` or `zh`
+- `animation`: accepts `slot` or `wheel`
 
 Example:
 
 ```text
-/?q=salad:3,sushi:1,soup:4&lang=zh
+/?q=salad:3,sushi:1,soup:4&lang=zh&animation=wheel
 ```
+
+If `lang` is omitted, Decisn uses the saved language preference when present. On first visit, browsers or operating systems reporting a Chinese locale default to Simplified Chinese.
 
 ## Storage
 
@@ -64,10 +71,10 @@ There is no sign-in, backend, database, or external randomness service.
 
 ## Release
 
-Current version: `0.1.0`
+Current version: `0.1.1`
 
-Deployment docs:
+Project docs:
 
-- [First deploy](deploy/first-deploy.md)
-- [Caddy site block](deploy/Caddyfile.decisn)
+- [Static deployment guide](deploy/first-deploy.md)
+- [Example Caddy site block](deploy/Caddyfile.decisn)
 - [Security pass](docs/security-pass.md)
