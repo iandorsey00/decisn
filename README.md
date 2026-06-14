@@ -46,13 +46,14 @@ Literal comma separators inside an option can be escaped with a backslash, such 
 ## Query Parameters
 
 - `q`: pre-populates the choice list
+- `title`: adds a title for share/download images
 - `lang`: accepts `en` or `zh`
 - `animation`: accepts `slot` or `wheel`
 
 Example:
 
 ```text
-/?q=salad:3,sushi:1,soup:4&lang=zh&animation=wheel
+/?title=Lunch&q=salad:3,sushi:1,soup:4&lang=zh&animation=wheel
 ```
 
 If `lang` is omitted, Decisn uses the saved language preference when present. On first visit, browsers or operating systems reporting a Chinese locale default to Simplified Chinese.
@@ -71,7 +72,7 @@ There is no sign-in, backend, database, or external randomness service.
 
 ## Release
 
-Current version: `0.1.4`
+Current version: `0.1.6`
 
 Project docs:
 

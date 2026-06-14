@@ -113,6 +113,7 @@ body {
 }
 
 button,
+input,
 textarea {
   font: inherit;
 }
@@ -270,12 +271,14 @@ button:disabled {
 }
 
 .decision-form,
+.title-field,
 .choice-field {
   display: grid;
   gap: 10px;
   min-width: 0;
 }
 
+.title-field span,
 .choice-field span,
 .option-group legend {
   color: var(--muted);
@@ -426,20 +429,30 @@ button:disabled {
   font-size: 13px;
 }
 
+input[type="text"],
 textarea {
   width: 100%;
-  min-height: 210px;
-  resize: vertical;
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
+}
+
+input[type="text"] {
+  min-height: 48px;
+  font-weight: 800;
+}
+
+textarea {
+  min-height: 210px;
+  resize: vertical;
   font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 15px;
   line-height: 1.55;
 }
 
+input[type="text"]::placeholder,
 textarea::placeholder {
   color: color-mix(in srgb, var(--muted) 70%, transparent);
 }
@@ -662,10 +675,6 @@ textarea::placeholder {
   max-height: 3.6em;
 }
 
-.animation-slot.is-spinning .result-value {
-  animation: slot-pulse 180ms ease-in-out infinite alternate;
-}
-
 .slot-stage {
   position: relative;
   z-index: 1;
@@ -883,16 +892,6 @@ textarea::placeholder {
   .accent-swatch:hover,
   .icon-button:hover {
     border-color: var(--accent);
-  }
-}
-
-@keyframes slot-pulse {
-  from {
-    transform: translateY(-1px);
-  }
-
-  to {
-    transform: translateY(1px);
   }
 }
 

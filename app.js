@@ -39,6 +39,8 @@ const translations = {
     appName: "Decisn",
     decisionPanelLabel: "Decision picker",
     choicesPanelLabel: "Choices",
+    titleLabel: "Title",
+    titlePlaceholder: "Optional, for shared images",
     choiceLabel: "Choice list",
     choicePlaceholder: "salad, sushi, soup\n\nor\n\nsalad:3\nsushi:1\nsoup:4",
     decide: "Decide",
@@ -99,6 +101,8 @@ const translations = {
     appName: "帮我选",
     decisionPanelLabel: "选择器",
     choicesPanelLabel: "选项",
+    titleLabel: "标题",
+    titlePlaceholder: "可选，用于分享图片",
     choiceLabel: "选项列表",
     choicePlaceholder: "沙拉, 寿司, 汤\n\n或\n\n沙拉:3\n寿司:1\n汤:4",
     decide: "帮我选",
@@ -162,6 +166,7 @@ const state = {
   animation: "slot",
   accent: "blue",
   theme: "system",
+  title: "",
   choicesText: "",
   history: [],
   selected: "",
@@ -679,7 +684,12 @@ function persistTheme() {
 
 function buildUrlFromChoices({ includeLanguage = state.languageInUrl } = {}) {
   const params = new URLSearchParams();
+  const title = elements.titleInput.value.trim();
   const trimmedChoices = serializeChoicesForQuery(elements.choicesInput.value);
+
+  if (title) {
+    params.set("title", title);
+  }
 
   if (trimmedChoices) {
     params.set("q", trimmedChoices);
@@ -737,6 +747,10 @@ function prefersReducedMotion() {
 
 function getDisplayLabel(value) {
   return value || t("choosing");
+}
+
+function getDecisionTitle() {
+  return (elements.titleInput?.value ?? state.title).trim();
 }
 
 function getWheelSegments(choices) {
@@ -814,7 +828,9 @@ async function runSelectionAnimation(result, choices) {
   elements.wheelSpinner.style.transform = "rotate(0deg)";
   setWheelLabelRotation(0);
   renderChoiceAnimations(choices);
-  elements.resultValue.textContent = t("choosing");
+  if (state.animation === "wheel") {
+    elements.resultValue.textContent = t("choosing");
+  }
 
   if (reducedMotion) {
     elements.resultValue.textContent = getDisplayLabel(result);
@@ -991,20 +1007,41 @@ function drawRoundRect(context, x, y, width, height, radius, fill, stroke, lineW
 }
 
 function drawImageHeader(context, theme) {
+  const title = getDecisionTitle();
+
   context.fillStyle = theme.text;
-  context.font = "800 54px Helvetica, Arial, sans-serif";
-  context.fillText(t("appName"), 92, 132);
+  context.textAlign = "left";
+  context.textBaseline = "alphabetic";
+
+  if (title) {
+    context.font = "800 48px Helvetica, Arial, sans-serif";
+    const titleHeight = wrapCanvasText(context, title, 92, 112, 650, 54, 2);
+    context.fillStyle = theme.accent;
+    context.font = "800 24px Helvetica, Arial, sans-serif";
+    context.fillText(t("appName"), 92, 112 + titleHeight + 10);
+  } else {
+    context.font = "800 54px Helvetica, Arial, sans-serif";
+    context.fillText(t("appName"), 92, 132);
+  }
 
   if (!state.imageOptions.showDateTime) {
     return;
   }
 
   context.fillStyle = theme.muted;
-  context.font = "700 28px Helvetica, Arial, sans-serif";
-  context.fillText(new Intl.DateTimeFormat(state.language === "zh" ? "zh-CN" : "en", {
+  context.font = "700 22px Helvetica, Arial, sans-serif";
+  const formattedDate = new Intl.DateTimeFormat(state.language === "zh" ? "zh-CN" : "en", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(state.selectedAt || Date.now())), 92, 178);
+  }).format(new Date(state.selectedAt || Date.now()));
+  const dateWidth = Math.min(350, context.measureText(formattedDate).width + 42);
+  const dateX = 1108 - dateWidth;
+
+  drawRoundRect(context, dateX, 72, dateWidth, 46, 23, theme.surfaceMuted, theme.line, 2);
+  context.fillStyle = theme.muted;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(formattedDate, dateX + dateWidth / 2, 95);
 
 }
 
@@ -1049,13 +1086,15 @@ function drawSlotImage(context, theme, choices) {
 
 function drawWheelImage(context, theme, choices) {
   const segments = getWheelSegments(choices);
+  const winningSegment = segments.find((segment) => segment.choice.label === state.selected) ?? segments[0];
+  const rotationOffset = -(winningSegment?.midDegrees ?? 0);
   const centerX = 930;
   const centerY = 330;
   const radius = 142;
 
   segments.forEach((segment, index) => {
-    const start = (segment.startPercent / 100) * Math.PI * 2 - Math.PI / 2;
-    const end = (segment.endPercent / 100) * Math.PI * 2 - Math.PI / 2;
+    const start = (((segment.startPercent / 100) * 360 + rotationOffset - 90) * Math.PI) / 180;
+    const end = (((segment.endPercent / 100) * 360 + rotationOffset - 90) * Math.PI) / 180;
     const strength = WHEEL_SHADE_STRENGTHS[index % WHEEL_SHADE_STRENGTHS.length] / 100;
 
     context.fillStyle = mixColor(theme.accent, segment.choice.label === state.selected ? theme.surface : theme.surfaceMuted, strength);
@@ -1072,8 +1111,8 @@ function drawWheelImage(context, theme, choices) {
   context.arc(centerX, centerY, radius, 0, Math.PI * 2);
   context.stroke();
 
-  getWheelLabelSegments(segments).slice(0, 10).forEach((segment) => {
-    const angle = (segment.midDegrees - 90) * (Math.PI / 180);
+  getWheelLabelSegments(segments).forEach((segment) => {
+    const angle = (segment.midDegrees + rotationOffset - 90) * (Math.PI / 180);
     const x = centerX + Math.cos(angle) * radius * 0.58;
     const y = centerY + Math.sin(angle) * radius * 0.58;
 
@@ -1414,7 +1453,13 @@ function switchTheme(theme) {
 
 function initFromUrl() {
   const params = new URLSearchParams(window.location.search);
+  const queryTitle = params.get("title");
   const queryChoices = params.get("q");
+
+  if (queryTitle) {
+    state.title = queryTitle;
+    elements.titleInput.value = queryTitle;
+  }
 
   if (queryChoices) {
     state.choicesText = queryChoices;
@@ -1425,6 +1470,7 @@ function initFromUrl() {
 
 function bindElements() {
   elements.form = document.querySelector("#decision-form");
+  elements.titleInput = document.querySelector("#title-input");
   elements.choicesInput = document.querySelector("#choices-input");
   elements.optionsDrawer = document.querySelector(".options-drawer");
   elements.decideButton = document.querySelector("#decide-button");
@@ -1461,6 +1507,11 @@ function init() {
   render();
 
   elements.form.addEventListener("submit", decide);
+  elements.titleInput.addEventListener("input", () => {
+    state.title = elements.titleInput.value;
+    updateUrlFromChoices();
+    void renderImagePreview();
+  });
   elements.choicesInput.addEventListener("input", () => renderChoiceAnimations());
   elements.copyLink.addEventListener("click", copyShareLink);
   elements.downloadImage.addEventListener("click", downloadResultImage);
