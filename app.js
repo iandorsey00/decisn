@@ -80,6 +80,12 @@ const translations = {
     referenceWeights: "Use option:3, option:0.5, option:1/365, or option:25% for weights. Ranges like [1,10], [-5,-3], [A,Z], and [a,z] are okay.",
     referenceRanges: "Escape literal brackets as \\[ and \\]. Spaces and parentheses are okay.",
     referenceDefaultWeight: "Choices without weights count as 1.",
+    aiHelperTitle: "AI list prompt",
+    aiPromptBody: "Help me create a Decisn choice list. Decisn is a local-first random picker that accepts comma-separated or line-separated options, optional weights like option:3, option:25%, option:1/365, and ranges like [1,10]. Return only a paste-ready list, with no explanation. For daily nutrition, suggest practical meal or snack choices that fit these goals: [describe goals, allergies, budget, cuisine, calories/macros].",
+    copyAiPrompt: "Copy Prompt",
+    aiPromptCopied: "Prompt copied.",
+    aiPromptCopyFailed: "Prompt ready. Select it from the prompt box.",
+    sourceCode: "GitHub",
     resultEmpty: "Ready",
     choosing: "Choosing...",
     history: "History",
@@ -143,6 +149,12 @@ const translations = {
     referenceWeights: "可用 选项:3、选项:0.5、选项:1/365 或 选项:25% 设置权重。也支持 [1,10]、[-5,-3]、[A,Z]、[a,z]。",
     referenceRanges: "字面量方括号写作 \\[ 和 \\]。空格和括号都可以。",
     referenceDefaultWeight: "未设置权重的选项按 1 计算。",
+    aiHelperTitle: "AI 列表提示词",
+    aiPromptBody: "请帮我创建一份可用于 Decisn（帮我选）的选项列表。Decisn 是一个本地优先的随机选择器，支持逗号分隔或换行分隔的选项，也支持 选项:3、选项:25%、选项:1/365 这样的权重，以及 [1,10] 这样的范围。请只返回可直接粘贴的列表，不要解释。用于日常营养时，请根据这些目标给出实用的正餐或零食选项：[填写目标、过敏、预算、口味、热量/宏量营养]。",
+    copyAiPrompt: "复制提示词",
+    aiPromptCopied: "提示词已复制。",
+    aiPromptCopyFailed: "提示词已准备好，请从提示词框中选择复制。",
+    sourceCode: "GitHub",
     resultEmpty: "待选择",
     choosing: "正在选择...",
     history: "历史记录",
@@ -1499,6 +1511,19 @@ async function copyShareLink() {
   }
 }
 
+async function copyAiPrompt() {
+  try {
+    if (!window.navigator.clipboard) {
+      throw new Error("Clipboard API unavailable.");
+    }
+
+    await window.navigator.clipboard.writeText(t("aiPromptBody"));
+    setStatus("aiPromptCopied");
+  } catch {
+    setStatus("aiPromptCopyFailed");
+  }
+}
+
 async function decide(event) {
   event?.preventDefault();
 
@@ -1623,6 +1648,7 @@ function bindElements() {
   elements.optionsDrawer = document.querySelector(".options-drawer");
   elements.decideButton = document.querySelector("#decide-button");
   elements.copyLink = document.querySelector("#copy-link");
+  elements.copyAiPrompt = document.querySelector("#copy-ai-prompt");
   elements.downloadImage = document.querySelector("#download-image");
   elements.shareImage = document.querySelector("#share-image");
   elements.previewImage = document.querySelector("#preview-image");
@@ -1662,6 +1688,7 @@ function init() {
   });
   elements.choicesInput.addEventListener("input", () => renderChoiceAnimations());
   elements.copyLink.addEventListener("click", copyShareLink);
+  elements.copyAiPrompt.addEventListener("click", copyAiPrompt);
   elements.downloadImage.addEventListener("click", downloadResultImage);
   elements.shareImage.addEventListener("click", () => {
     void shareResultImage().catch(() => setStatus("imageShareUnavailable"));

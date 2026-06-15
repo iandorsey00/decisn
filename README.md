@@ -79,9 +79,11 @@ The app uses browser local storage only:
 
 There is no sign-in, backend, database, or external randomness service.
 
+The options drawer includes a copyable AI prompt to help generate paste-ready lists in another tool. Decisn itself does not call AI services.
+
 ## Release
 
-Current version: `0.1.8`
+Current version: `0.1.9`
 
 Project docs:
 

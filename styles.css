@@ -407,17 +407,37 @@ button:disabled {
   --swatch: #7c3aed;
 }
 
-.input-reference {
+.input-reference,
+.ai-helper {
   display: grid;
   gap: 8px;
   padding-top: 2px;
 }
 
-.input-reference h3 {
+.input-reference h3,
+.ai-helper h3 {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
   font-weight: 800;
+}
+
+.helper-heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.helper-heading a {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.helper-heading a:hover {
+  text-decoration: underline;
 }
 
 .input-reference ul {
@@ -427,6 +447,19 @@ button:disabled {
   padding-left: 18px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.ai-prompt-text {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  user-select: text;
 }
 
 input[type="text"],
