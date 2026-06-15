@@ -36,7 +36,7 @@
     <title>Decisn | Local-first decision picker</title>
     <link rel="icon" type="image/svg+xml" href="assets/decisn-icon.svg">
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="stylesheet" href="styles.css?v=0.1.9">
+    <link rel="stylesheet" href="styles.css?v=0.1.10">
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -67,7 +67,7 @@
         }
       }
     </script>
-    <script src="app.js?v=0.1.9" defer></script>
+    <script src="app.js?v=0.1.10" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -234,7 +234,7 @@
                     <a href="https://github.com/iandorsey00/decisn" rel="noopener noreferrer" target="_blank" data-i18n="sourceCode">GitHub</a>
                   </div>
                   <p class="ai-prompt-text" id="ai-prompt-text" data-i18n="aiPromptBody">
-                    Help me create a Decisn choice list. Decisn is a local-first random picker that accepts comma-separated or line-separated options, optional weights like option:3, option:25%, option:1/365, and ranges like [1,10]. Return only a paste-ready list, with no explanation. For daily nutrition, suggest practical meal or snack choices that fit these goals: [describe goals, allergies, budget, cuisine, calories/macros].
+                    Help me create a Decisn choice list for this goal: [describe what I am choosing]. Decisn is a local-first random picker that accepts comma-separated or line-separated options, optional weights like option:3, option:25%, option:1/365, and ranges like [1,10]. Suggest practical options and, when useful, recommend simple weights.
                   </p>
                   <button class="tool-button compact" id="copy-ai-prompt" type="button" data-i18n="copyAiPrompt">Copy Prompt</button>
                 </section>
@@ -260,7 +260,7 @@
       </main>
 
       <footer class="site-footer">
-        <p>Decisn 0.1.9 © 2026 Ian Dorsey · Open source under the MIT License</p>
+        <p>Decisn 0.1.10 © 2026 Ian Dorsey · Open source under the MIT License</p>
       </footer>
     </div>
   </body>
