@@ -1524,8 +1524,33 @@ async function copyAiPrompt() {
   }
 }
 
+function isTextEntryElement(element) {
+  if (!element) {
+    return false;
+  }
+
+  const tagName = element.tagName?.toLowerCase();
+  return tagName === "textarea" || tagName === "input" || element.isContentEditable;
+}
+
+function blurTextEntryFocus() {
+  if (isTextEntryElement(document.activeElement)) {
+    document.activeElement.blur();
+  }
+}
+
+function handleGlobalKeydown(event) {
+  if (event.key !== "Enter" || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey || isTextEntryElement(event.target)) {
+    return;
+  }
+
+  event.preventDefault();
+  void decide();
+}
+
 async function decide(event) {
   event?.preventDefault();
+  blurTextEntryFocus();
 
   if (state.isChoosing) {
     return;
@@ -1681,6 +1706,7 @@ function init() {
   render();
 
   elements.form.addEventListener("submit", decide);
+  document.addEventListener("keydown", handleGlobalKeydown);
   elements.titleInput.addEventListener("input", () => {
     state.title = elements.titleInput.value;
     updateUrlFromChoices();
