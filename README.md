@@ -34,6 +34,15 @@ soup
 
 Whitespace around labels, colons, fractions, and percent signs is okay. Parentheses around a weight are also okay, such as `sushi:(1/365)`.
 
+Inclusive integer and letter ranges are accepted:
+
+```text
+[1,10]
+[-5,-3]
+[A,Z]
+[a,z]
+```
+
 Separators supported:
 
 - half-width commas: `salad,sushi,soup`
@@ -41,7 +50,7 @@ Separators supported:
 - Chinese enumeration commas: `沙拉、寿司、汤`
 - line breaks
 
-Literal comma separators inside an option can be escaped with a backslash, such as `\,`, `\，`, or `\、`. Literal backslashes can be escaped with `\\`.
+Literal comma separators inside an option can be escaped with a backslash, such as `\,`, `\，`, or `\、`. Literal brackets can be escaped as `\[` and `\]`. Literal backslashes can be escaped with `\\`.
 
 ## Query Parameters
 
@@ -72,7 +81,7 @@ There is no sign-in, backend, database, or external randomness service.
 
 ## Release
 
-Current version: `0.1.7`
+Current version: `0.1.8`
 
 Project docs:
 

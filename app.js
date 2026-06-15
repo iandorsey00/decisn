@@ -21,6 +21,8 @@ const SUPPORTED_THEMES = new Set(["system", "light", "dark"]);
 const WHEEL_SHADE_STRENGTHS = [46, 30, 58, 22, 40, 64, 34, 52];
 const MAX_WHEEL_LABELS = 18;
 const MIN_WHEEL_LABEL_DEGREES = 12;
+const RANGE_EXPANSION_LIMIT = 60;
+const MAX_RANGE_ITEMS = 10000;
 const ACCENT_COLORS = {
   blue: "#2563eb",
   cyan: "#0891b2",
@@ -75,7 +77,8 @@ const translations = {
     accentPurple: "Purple accent",
     inputReference: "Input reference",
     referenceCommas: "Use commas, Chinese commas, or line breaks. Escape literal comma separators or colons with a backslash, and backslashes as \\\\.",
-    referenceWeights: "Use option:3, option:0.5, option:1/365, or option:25% for weights. Spaces and parentheses are okay.",
+    referenceWeights: "Use option:3, option:0.5, option:1/365, or option:25% for weights. Ranges like [1,10], [-5,-3], [A,Z], and [a,z] are okay.",
+    referenceRanges: "Escape literal brackets as \\[ and \\]. Spaces and parentheses are okay.",
     referenceDefaultWeight: "Choices without weights count as 1.",
     resultEmpty: "Ready",
     choosing: "Choosing...",
@@ -137,7 +140,8 @@ const translations = {
     accentPurple: "紫色强调色",
     inputReference: "输入参考",
     referenceCommas: "支持英文逗号、中文逗号和换行。选项里的逗号分隔符或冒号前加反斜杠，反斜杠写作 \\\\。",
-    referenceWeights: "可用 选项:3、选项:0.5、选项:1/365 或 选项:25% 设置权重。空格和括号都可以。",
+    referenceWeights: "可用 选项:3、选项:0.5、选项:1/365 或 选项:25% 设置权重。也支持 [1,10]、[-5,-3]、[A,Z]、[a,z]。",
+    referenceRanges: "字面量方括号写作 \\[ 和 \\]。空格和括号都可以。",
     referenceDefaultWeight: "未设置权重的选项按 1 计算。",
     resultEmpty: "待选择",
     choosing: "正在选择...",
@@ -265,33 +269,151 @@ function parseChoices(input) {
     .filter(Boolean);
 
   let usedFallbackWeight = false;
-  const choices = entries.map((entry) => {
+  const choices = entries.flatMap((entry) => {
     const separatorIndex = findWeightSeparatorIndex(entry);
 
     if (separatorIndex > 0) {
-      const label = unescapeChoiceLabel(entry.slice(0, separatorIndex).trim());
+      const rawLabel = entry.slice(0, separatorIndex).trim();
+      const label = unescapeChoiceLabel(rawLabel);
       const weightText = entry.slice(separatorIndex + 1).trim();
       const parsedWeight = parseWeight(weightText);
+      const range = parseRangeExpression(rawLabel);
 
       if (label && Number.isFinite(parsedWeight.value) && parsedWeight.value > 0) {
-        return { label, weight: parsedWeight.value, weightText: parsedWeight.text };
+        return range ? createChoicesFromRange(range, parsedWeight.value, parsedWeight.text) : { label, weight: parsedWeight.value, weightText: parsedWeight.text };
       }
 
       if (label && weightText.length === 0) {
         usedFallbackWeight = true;
-        return { label, weight: 1 };
+        return range ? createChoicesFromRange(range, 1) : { label, weight: 1 };
       }
 
       if (label) {
         usedFallbackWeight = true;
-        return { label, weight: 1 };
+        return range ? createChoicesFromRange(range, 1) : { label, weight: 1 };
       }
     }
 
-    return { label: unescapeChoiceLabel(entry), weight: 1 };
+    const range = parseRangeExpression(entry);
+    return range ? createChoicesFromRange(range, 1) : { label: unescapeChoiceLabel(entry), weight: 1 };
   });
 
   return { choices, usedFallbackWeight };
+}
+
+function parseRangeExpression(rawLabel) {
+  const trimmed = rawLabel.trim();
+
+  if (!trimmed.startsWith("[") || !trimmed.endsWith("]") || isEscapedCharacter(trimmed, 0) || isEscapedCharacter(trimmed, trimmed.length - 1)) {
+    return null;
+  }
+
+  const inner = trimmed.slice(1, -1);
+  const delimiterIndex = findUnescapedRangeDelimiter(inner);
+
+  if (delimiterIndex < 0) {
+    return null;
+  }
+
+  const startText = inner.slice(0, delimiterIndex).trim();
+  const endText = inner.slice(delimiterIndex + 1).trim();
+  const integerStart = /^-?\d+$/.test(startText);
+  const integerEnd = /^-?\d+$/.test(endText);
+  const letterStart = /^[A-Z]$/.test(startText) || /^[a-z]$/.test(startText);
+  const letterEnd = /^[A-Z]$/.test(endText) || /^[a-z]$/.test(endText);
+
+  if (integerStart && integerEnd) {
+    const start = Number(startText);
+    const end = Number(endText);
+    const count = Math.abs(end - start) + 1;
+
+    if (count > MAX_RANGE_ITEMS) {
+      return null;
+    }
+
+    return { count, end, label: `[${start},${end}]`, start, type: "integer" };
+  }
+
+  if (letterStart && letterEnd && isSameLetterCase(startText, endText)) {
+    const start = startText.codePointAt(0);
+    const end = endText.codePointAt(0);
+    const count = Math.abs(end - start) + 1;
+
+    return { count, end, label: `[${startText},${endText}]`, start, type: "letter" };
+  }
+
+  return null;
+}
+
+function findUnescapedRangeDelimiter(text) {
+  for (let index = 0; index < text.length; index += 1) {
+    if (text[index] === "," && !isEscapedCharacter(text, index)) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function isSameLetterCase(start, end) {
+  return (start >= "A" && start <= "Z" && end >= "A" && end <= "Z") || (start >= "a" && start <= "z" && end >= "a" && end <= "z");
+}
+
+function createChoicesFromRange(range, baseWeight, weightText = "") {
+  if (range.count > RANGE_EXPANSION_LIMIT) {
+    return [{
+      label: range.label,
+      range,
+      weight: baseWeight * range.count,
+      weightText,
+    }];
+  }
+
+  return Array.from({ length: range.count }, (_, index) => ({
+    label: getRangeItemLabel(range, index),
+    weight: baseWeight,
+    weightText,
+  }));
+}
+
+function getRangeItemLabel(range, index) {
+  const direction = range.end >= range.start ? 1 : -1;
+  const value = range.start + index * direction;
+  return range.type === "letter" ? String.fromCodePoint(value) : String(value);
+}
+
+function getRandomRangeItemLabel(range) {
+  return getRangeItemLabel(range, cryptoRandomIndex(range.count));
+}
+
+function choiceContainsResult(choice, result) {
+  if (choice.label === result) {
+    return true;
+  }
+
+  return Boolean(choice.range && isResultInRange(choice.range, result));
+}
+
+function isResultInRange(range, result) {
+  if (range.type === "integer") {
+    if (!/^-?\d+$/.test(result)) {
+      return false;
+    }
+
+    const value = Number(result);
+    return value >= Math.min(range.start, range.end) && value <= Math.max(range.start, range.end);
+  }
+
+  if (range.type === "letter") {
+    const codePoint = result.codePointAt(0);
+    return Array.from(result).length === 1 && codePoint >= Math.min(range.start, range.end) && codePoint <= Math.max(range.start, range.end);
+  }
+
+  return false;
+}
+
+function getChoicesCount(choices) {
+  return choices.reduce((total, choice) => total + (choice.range?.count ?? 1), 0);
 }
 
 function findWeightSeparatorIndex(entry) {
@@ -317,6 +439,7 @@ function isEscapedCharacter(text, index) {
 function splitChoiceEntries(input) {
   const entries = [];
   let currentEntry = "";
+  let bracketDepth = 0;
 
   for (let index = 0; index < input.length; index += 1) {
     const character = input[index];
@@ -328,7 +451,15 @@ function splitChoiceEntries(input) {
       continue;
     }
 
-    if (character === "\n" || character === "," || character === "，" || character === "、") {
+    if (character === "[" && !isEscapedCharacter(input, index)) {
+      bracketDepth += 1;
+    }
+
+    if (character === "]" && !isEscapedCharacter(input, index)) {
+      bracketDepth = Math.max(0, bracketDepth - 1);
+    }
+
+    if ((character === "\n" || character === "," || character === "，" || character === "、") && bracketDepth === 0) {
       entries.push(currentEntry);
       currentEntry = "";
       continue;
@@ -368,20 +499,33 @@ function parseWeight(weightText) {
 }
 
 function serializeChoicesForQuery(input) {
-  return parseChoices(input).choices
-    .map((choice) => {
-      const label = escapeChoiceLabel(choice.label);
-      return choice.weightText ? `${label}:${choice.weightText}` : label;
-    })
+  return splitChoiceEntries(input)
+    .map((entry) => serializeChoiceEntryForQuery(entry.trim()))
+    .filter(Boolean)
     .join(",");
 }
 
+function serializeChoiceEntryForQuery(entry) {
+  const separatorIndex = findWeightSeparatorIndex(entry);
+
+  if (separatorIndex > 0) {
+    const rawLabel = entry.slice(0, separatorIndex).trim();
+    const weightText = entry.slice(separatorIndex + 1).trim();
+    const range = parseRangeExpression(rawLabel);
+    const label = range ? range.label : escapeChoiceLabel(unescapeChoiceLabel(rawLabel));
+    return weightText ? `${label}:${parseWeight(weightText).text}` : label;
+  }
+
+  const range = parseRangeExpression(entry);
+  return range ? range.label : escapeChoiceLabel(unescapeChoiceLabel(entry));
+}
+
 function escapeChoiceLabel(label) {
-  return label.replace(/\\/g, "\\\\").replace(/[,，、:]/g, "\\$&");
+  return label.replace(/\\/g, "\\\\").replace(/[,，、:[\]]/g, "\\$&");
 }
 
 function unescapeChoiceLabel(label) {
-  return label.replace(/\\:/g, ":");
+  return label.replace(/\\([,，、:[\]\\])/g, "$1");
 }
 
 function cryptoRandomUnit() {
@@ -409,11 +553,12 @@ function selectWeightedChoice(choices) {
   for (const choice of choices) {
     cursor -= choice.weight;
     if (cursor < 0) {
-      return choice.label;
+      return choice.range ? getRandomRangeItemLabel(choice.range) : choice.label;
     }
   }
 
-  return choices[choices.length - 1].label;
+  const fallbackChoice = choices[choices.length - 1];
+  return fallbackChoice.range ? getRandomRangeItemLabel(fallbackChoice.range) : fallbackChoice.label;
 }
 
 function formatChoiceCount(count) {
@@ -590,7 +735,7 @@ function spinSlotReel(choices, result) {
   let targetIndex = 0;
 
   for (let index = lastBalancedIndex; index >= 0; index -= 1) {
-    if (reelChoices[index].label === result) {
+    if (choiceContainsResult(reelChoices[index], result)) {
       targetIndex = index;
       break;
     }
@@ -811,7 +956,7 @@ function getWheelLabelSegments(segments) {
 
 function updateWheel(choices, result) {
   const segments = renderWheelRegions(choices);
-  const winningSegment = segments.find((segment) => segment.choice.label === result) ?? segments[0];
+  const winningSegment = segments.find((segment) => choiceContainsResult(segment.choice, result)) ?? segments[0];
   const segmentDegrees = Math.max(1, (winningSegment.endPercent - winningSegment.startPercent) * 3.6);
   const offsetWindow = Math.max(1, Math.floor(segmentDegrees * 0.32));
   const randomOffset = cryptoRandomIndex(offsetWindow * 2 + 1) - offsetWindow;
@@ -1089,7 +1234,7 @@ function drawSlotImage(context, theme, choices) {
 
 function drawWheelImage(context, theme, choices) {
   const segments = getWheelSegments(choices);
-  const winningSegment = segments.find((segment) => segment.choice.label === state.selected) ?? segments[0];
+  const winningSegment = segments.find((segment) => choiceContainsResult(segment.choice, state.selected)) ?? segments[0];
   const rotationOffset = -(winningSegment?.midDegrees ?? 0);
   const centerX = 930;
   const centerY = 330;
@@ -1100,7 +1245,7 @@ function drawWheelImage(context, theme, choices) {
     const end = (((segment.endPercent / 100) * 360 + rotationOffset - 90) * Math.PI) / 180;
     const strength = WHEEL_SHADE_STRENGTHS[index % WHEEL_SHADE_STRENGTHS.length] / 100;
 
-    context.fillStyle = mixColor(theme.accent, segment.choice.label === state.selected ? theme.surface : theme.surfaceMuted, strength);
+    context.fillStyle = mixColor(theme.accent, choiceContainsResult(segment.choice, state.selected) ? theme.surface : theme.surfaceMuted, strength);
     context.beginPath();
     context.moveTo(centerX, centerY);
     context.arc(centerX, centerY, radius, start, end);
@@ -1376,7 +1521,7 @@ async function decide(event) {
   const historyItem = {
     timestamp: new Date().toISOString(),
     result,
-    choicesCount: parsed.choices.length,
+    choicesCount: getChoicesCount(parsed.choices),
   };
 
   setChoosing(true);
