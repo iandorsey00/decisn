@@ -8,6 +8,11 @@
   "theme_color": "#f7f7f8",
   "icons": [
     {
+      "src": "assets/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
       "src": "assets/decisn-icon.svg",
       "sizes": "512x512",
       "type": "image/svg+xml"

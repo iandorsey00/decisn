@@ -13,7 +13,7 @@
   --danger-soft: #f3ece8;
   --focus: #111111;
   --radius: 8px;
-  --font: Helvetica, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font: "Inter", "Helvetica Neue", Arial, sans-serif;
 }
 
 :root[data-accent="blue"] {
@@ -170,10 +170,11 @@ button:disabled {
 .brand-mark {
   margin: 0;
   color: var(--text);
-  font-size: clamp(3.2rem, 8vw, 5.2rem);
-  font-weight: 800;
-  letter-spacing: 0;
-  line-height: 0.9;
+  font-family: var(--font);
+  font-size: clamp(2.8rem, 7vw, 5.2rem);
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  line-height: 0.92;
 }
 
 .segmented-control {
@@ -939,7 +940,7 @@ textarea::placeholder {
   }
 
   .brand-mark {
-    font-size: clamp(3rem, 15vw, 4.4rem);
+    font-size: clamp(2.8rem, 14vw, 4.4rem);
   }
 
   .workspace-layout {
