@@ -83,7 +83,7 @@ The options drawer includes a copyable AI prompt to help generate paste-ready li
 
 ## Release
 
-Current version: `0.1.12`
+Current version: `0.1.13`
 
 Project docs:
 

@@ -165,16 +165,18 @@ button:disabled {
 .brand-lockup {
   display: inline-flex;
   justify-content: center;
+  font-size: clamp(2.8rem, 7vw, 5.2rem);
+  line-height: 0.92;
 }
 
 .brand-mark {
   margin: 0;
   color: var(--text);
   font-family: var(--font);
-  font-size: clamp(2.8rem, 7vw, 5.2rem);
+  font-size: 1em;
   font-weight: 700;
   letter-spacing: -0.06em;
-  line-height: 0.92;
+  line-height: inherit;
 }
 
 .segmented-control {
@@ -937,10 +939,6 @@ textarea::placeholder {
   .topbar {
     margin-bottom: 6px;
     padding: 4px 16px 2px;
-  }
-
-  .brand-mark {
-    font-size: clamp(2.8rem, 14vw, 4.4rem);
   }
 
   .workspace-layout {
